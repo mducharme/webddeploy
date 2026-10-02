@@ -1,0 +1,77 @@
+{
+    "api_version": 1,
+    "logs": [
+        {
+            "name": "backup-database",
+            "kind": "fleet",
+            "size": 323,
+            "modified_at": "2026-10-02T13:23:01Z"
+        },
+        {
+            "name": "backup-uploads",
+            "kind": "fleet",
+            "size": 330,
+            "modified_at": "2026-10-02T13:17:02Z"
+        },
+        {
+            "name": "testsite-alt-main",
+            "kind": "site",
+            "size": 2643,
+            "modified_at": "2026-10-02T15:03:21Z"
+        },
+        {
+            "name": "testsite-auto-one",
+            "kind": "site",
+            "size": 963,
+            "modified_at": "2026-10-02T12:38:20Z"
+        },
+        {
+            "name": "testsite-collide",
+            "kind": "site",
+            "size": 254,
+            "modified_at": "2026-10-02T12:38:22Z"
+        },
+        {
+            "name": "testsite-feature-a",
+            "kind": "site",
+            "size": 1338,
+            "modified_at": "2026-10-02T12:38:25Z"
+        },
+        {
+            "name": "testsite-feature-gh",
+            "kind": "site",
+            "size": 565,
+            "modified_at": "2026-10-02T12:37:42Z"
+        },
+        {
+            "name": "testsite-glob-one",
+            "kind": "site",
+            "size": 555,
+            "modified_at": "2026-10-02T12:38:22Z"
+        },
+        {
+            "name": "testsite",
+            "kind": "site",
+            "size": 43626,
+            "modified_at": "2026-10-02T15:03:22Z"
+        },
+        {
+            "name": "webhook-other",
+            "kind": "webhook",
+            "size": 749,
+            "modified_at": "2026-10-02T12:38:20Z"
+        },
+        {
+            "name": "webhook",
+            "kind": "webhook",
+            "size": 4843,
+            "modified_at": "2026-10-02T12:38:23Z"
+        },
+        {
+            "name": "wrongname",
+            "kind": "site",
+            "size": 780,
+            "modified_at": "2026-10-02T14:57:22Z"
+        }
+    ]
+}

@@ -1,0 +1,17 @@
+{
+    "api_version": 1,
+    "project": "testsite",
+    "previews": [
+        {
+            "name": "testsite-alt-main",
+            "url": "https://testsite-alt-main.staging.ddeploy.test",
+            "branch": "alt-main",
+            "mode": "shared",
+            "provisioned": true,
+            "sha": "3517ae64fad314ea74a68e8a6323a6db7734a8b7",
+            "committed_at": "2026-10-02T12:37:52+00:00",
+            "subject": "alt-main v2",
+            "deployed_sha": "3517ae64fad314ea74a68e8a6323a6db7734a8b7"
+        }
+    ]
+}

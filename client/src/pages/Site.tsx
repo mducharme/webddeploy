@@ -1,0 +1,201 @@
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
+import type { SiteDetailResponse } from '@webddeploy/shared';
+import { ExternalLink } from 'lucide-react';
+import type { ReactNode } from 'react';
+import { Checks } from '../components/Checks.tsx';
+import { LogView } from '../components/LogView.tsx';
+import { Commit, RunTable } from '../components/RunTable.tsx';
+import { DatabaseTab } from './DatabaseTab.tsx';
+import { EnvTab } from './EnvTab.tsx';
+import { HistoryTab } from './HistoryTab.tsx';
+import { OverviewTab } from './OverviewTab.tsx';
+import { SettingsTab } from './SettingsTab.tsx';
+import { DeployNowButton } from './siteShared.tsx';
+import { Badge, Card, Empty, ErrorBox, Mono, Spinner, StatusDot, Tabs, Td, Th } from '../components/ui.tsx';
+import { logStreamUrl, useDoctor, usePreviews, useSite } from '../lib/api.ts';
+import { relativeTime } from '../lib/format.ts';
+import { useOutputStream } from '../lib/stream.ts';
+
+export const SITE_TABS = ['overview', 'history', 'environment', 'settings', 'database', 'previews', 'logs', 'health', 'config'] as const;
+export type SiteTab = (typeof SITE_TABS)[number];
+
+export function SitePage() {
+  const { server, name } = useParams({ from: '/s/$server/sites/$name' });
+  const { tab } = useSearch({ from: '/s/$server/sites/$name' });
+  const navigate = useNavigate({ from: '/s/$server/sites/$name' });
+  const site = useSite(server, name);
+
+  if (site.isPending) return <Spinner label={`Reading ${name}…`} />;
+  if (site.error) return <ErrorBox error={site.error} title={`Couldn't load ${name}`} />;
+  const d = site.data;
+  const s = d.site;
+  const tabs = SITE_TABS.filter((t) => !(t === 'previews' && s.preview)).map((id) => ({ id, label: id[0]!.toUpperCase() + id.slice(1) }));
+
+  return (
+    <div className="space-y-4">
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="flex items-center gap-2 text-xl font-semibold">
+            {s.name}
+            {s.preview && <Badge tone="neutral">preview of {s.preview.project} · {s.preview.mode}</Badge>}
+          </h1>
+          <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-stone-600 dark:text-stone-400">
+            {(d.config?.hostnames ?? [s.url.replace('https://', '')]).concat(d.config?.custom_domains ?? []).map((h) => (
+              <a key={h} href={`https://${h}`} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 hover:text-teal-700">
+                {h} <ExternalLink className="size-3" aria-hidden />
+              </a>
+            ))}
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-sm">
+            <span className="text-stone-500">{s.branch ?? 'detached'}</span>
+            <Commit sha={s.sha} repo={s.repo} subject={s.subject} />
+            {s.committed_at && <span className="text-xs text-stone-400">committed {relativeTime(s.committed_at)}</span>}
+          </div>
+        </div>
+        {!s.preview && <DeployNowButton server={server} name={s.name} confirmLabel={`Deploy ${s.branch ?? 'branch'} to ${s.name}`} />}
+      </div>
+
+      <Tabs tabs={tabs} value={tab} onChange={(t) => void navigate({ search: { tab: t }, replace: true })} />
+
+      {tab === 'overview' && <OverviewTab server={server} detail={d} />}
+      {tab === 'history' && <HistoryTab server={server} detail={d} />}
+      {tab === 'environment' && <EnvTab server={server} name={name} isPreview={!!s.preview} />}
+      {tab === 'settings' && <SettingsTab server={server} detail={d} />}
+      {tab === 'database' && <DatabaseTab server={server} name={name} />}
+      {tab === 'previews' && <PreviewsTab server={server} name={name} />}
+      {tab === 'logs' && <SiteLog server={server} name={name} />}
+      {tab === 'health' && <HealthTab server={server} name={name} />}
+      {tab === 'config' && <ConfigTab detail={d} />}
+    </div>
+  );
+}
+
+function PreviewsTab({ server, name }: { server: string; name: string }) {
+  const previews = usePreviews(server, name);
+  if (previews.isPending) return <Spinner />;
+  if (previews.error) return <ErrorBox error={previews.error} />;
+  const { active, history } = previews.data;
+  return (
+    <div className="space-y-4">
+      <Card title={`Active previews (${active.length})`}>
+        {active.length === 0 ? (
+          <Empty>No active previews.</Empty>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[40rem]">
+              <thead className="border-b border-stone-200 dark:border-stone-800">
+                <tr><Th>Branch</Th><Th>URL</Th><Th>Mode</Th><Th>Live</Th></tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+                {active.map((p) => (
+                  <tr key={p.name}>
+                    <Td className="font-medium">{p.branch}</Td>
+                    <Td>
+                      <a href={p.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-teal-700 hover:underline dark:text-teal-400">
+                        {p.url.replace('https://', '')} <ExternalLink className="size-3" aria-hidden />
+                      </a>
+                    </Td>
+                    <Td><Badge tone="neutral">{p.mode}</Badge></Td>
+                    <Td><Commit sha={p.sha} subject={p.subject} /></Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </Card>
+      <Card title="Preview history">
+        <RunTable runs={history} server={server} showSite empty="No preview activity recorded yet." />
+      </Card>
+    </div>
+  );
+}
+
+export function SiteLog({ server, name }: { server: string; name: string }) {
+  const stream = useOutputStream(logStreamUrl(server, name));
+  return (
+    <Card
+      title={<>Log: <Mono>{name}</Mono></>}
+      actions={<span className="flex items-center gap-1.5 text-xs text-stone-500"><StatusDot status={stream.connected ? 'ok' : 'off'} />{stream.connected ? 'following' : 'disconnected'}</span>}
+    >
+      {stream.error && <ErrorBox error={stream.error} />}
+      <LogView text={stream.text} placeholder="Waiting for the log…" className="rounded-b-lg" />
+    </Card>
+  );
+}
+
+function HealthTab({ server, name }: { server: string; name: string }) {
+  const doctor = useDoctor(server, name);
+  if (doctor.isPending) return <Spinner label="Running checks…" />;
+  if (doctor.error) return <ErrorBox error={doctor.error} />;
+  const site = doctor.data.sites.find((s) => s.name === name);
+  return (
+    <Card title="Health checks" actions={<span className="text-xs text-stone-500">checked {relativeTime(doctor.data.checked_at)}</span>}>
+      <Checks checks={site?.checks ?? []} />
+    </Card>
+  );
+}
+
+function Row({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className="grid grid-cols-1 gap-1 px-4 py-2 sm:grid-cols-[12rem_1fr]">
+      <dt className="text-sm text-stone-500">{label}</dt>
+      <dd className="min-w-0 break-words text-sm">{children}</dd>
+    </div>
+  );
+}
+
+const list = (xs: string[] | undefined) => (xs && xs.length ? xs.map((x) => <Mono key={x} className="mr-2 block sm:inline">{x}</Mono>) : <span className="text-stone-400">none</span>);
+
+function ConfigTab({ detail }: { detail: SiteDetailResponse }) {
+  const c = detail.config;
+  return (
+    <div className="grid gap-4 lg:grid-cols-2">
+      <Card title="Resolved configuration">
+        {detail.config_error && <ErrorBox error={detail.config_error} title="Config doesn't parse" />}
+        {c && (
+          <dl className="divide-y divide-stone-100 dark:divide-stone-800">
+            <Row label="Source">{c.source}</Row>
+            <Row label="PHP">{c.php}</Row>
+            <Row label="Docroot"><Mono>{c.docroot}</Mono></Row>
+            <Row label="Database">{c.db_name}</Row>
+            <Row label="Node">{c.node.spec ? `${c.node.spec} (from ${c.node.source})` : 'none'}{c.build ? ' · builds a frontend' : ''}</Row>
+            <Row label="Basic auth">{c.basic_auth ? 'on' : 'off'}</Row>
+            <Row label="Hostnames">{list(c.hostnames)}</Row>
+            <Row label="Custom domains">{list(c.custom_domains)}</Row>
+            <Row label="Upload dirs">{list(c.upload_dirs)}</Row>
+            <Row label="Persistent files">{list(c.persistent_files)}</Row>
+            <Row label="Queue workers">{list(c.queue_workers)}</Row>
+            <Row label="Schedule">{list(c.schedule.map((x) => x.replace('\t', '  ')))}</Row>
+          </dl>
+        )}
+      </Card>
+      <div className="space-y-4">
+        <Card title="Operator overrides">
+          <dl className="divide-y divide-stone-100 dark:divide-stone-800">
+            <Row label="Tracked branch">{detail.deploy_branch ?? <span className="text-stone-400">repository default</span>}</Row>
+            {detail.overrides && Object.keys(detail.overrides).length ? (
+              Object.entries(detail.overrides).map(([k, v]) => <Row key={k} label={k}><Mono>{typeof v === 'string' ? v : JSON.stringify(v)}</Mono></Row>)
+            ) : (
+              <Row label="Overrides"><span className="text-stone-400">none (set with ddeploy override)</span></Row>
+            )}
+          </dl>
+        </Card>
+        <Card title={`Releases on disk (${detail.releases.length})`}>
+          {detail.releases.length === 0 ? (
+            <Empty>No releases (previews deploy in place).</Empty>
+          ) : (
+            <ul className="divide-y divide-stone-100 dark:divide-stone-800">
+              {detail.releases.map((r) => (
+                <li key={r.id} className="flex items-center justify-between gap-2 px-4 py-2 text-sm">
+                  <Mono>{r.id}</Mono>
+                  {r.current && <Badge tone="ok">live</Badge>}
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}

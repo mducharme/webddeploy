@@ -1,0 +1,48 @@
+{
+    "api_version": 1,
+    "run_id": "20261002T150314Z-6e2ab3",
+    "meta": {
+        "run_id": "20261002T150314Z-6e2ab3",
+        "kind": "provision",
+        "site": "testsite",
+        "argv": [
+            "provision",
+            "testsite",
+            "ssh://gitfixture@127.0.0.1/srv/git/testsite.git",
+            "--non-interactive",
+            "--hostnames",
+            "alt-testsite"
+        ],
+        "actor": "admin@example.com",
+        "submitted_at": "2026-10-02T15:03:14Z"
+    },
+    "events": [
+        {
+            "ts": "2026-10-02T15:03:14Z",
+            "run_id": "20261002T150314Z-6e2ab3",
+            "site": "testsite",
+            "kind": "provision",
+            "phase": "started",
+            "trigger": "web (admin@example.com)"
+        },
+        {
+            "ts": "2026-10-02T15:03:16Z",
+            "run_id": "20261002T150314Z-6e2ab3",
+            "site": "testsite",
+            "kind": "provision",
+            "phase": "succeeded",
+            "trigger": "web (admin@example.com)",
+            "to_sha": "947c19f53c8a55720adbd57ef49b6efcdadfea94",
+            "subject": "add a hooks.post-start step that clones a private repo",
+            "branch": "main",
+            "duration_s": 2
+        }
+    ],
+    "unit": {
+        "load_state": "not-found",
+        "active_state": "inactive",
+        "result": "success"
+    },
+    "log_size": 2812,
+    "cancelled_by": null
+}

@@ -1,0 +1,45 @@
+{
+    "api_version": 1,
+    "site": "testsite",
+    "target": "testsite",
+    "database": "testsite",
+    "user": "testsite",
+    "host": "dbhost",
+    "scheme": "laravel",
+    "error": null,
+    "size_bytes": 16384,
+    "table_count": 1,
+    "tables": [
+        {
+            "name": "posts",
+            "rows": 1,
+            "bytes": 16384
+        }
+    ],
+    "snapshots": [
+        {
+            "id": "20261002T150316Z-pre-import",
+            "bytes": 526,
+            "reason": "pre-import",
+            "created_at": "2026-10-02T15:03:16Z"
+        },
+        {
+            "id": "20261002T145737Z-manual",
+            "bytes": 526,
+            "reason": "manual",
+            "created_at": "2026-10-02T14:57:37Z"
+        },
+        {
+            "id": "20261002T145736Z-pre-import",
+            "bytes": 794,
+            "reason": "pre-import",
+            "created_at": "2026-10-02T14:57:36Z"
+        },
+        {
+            "id": "20261002T145734Z-pre-import",
+            "bytes": 525,
+            "reason": "pre-import",
+            "created_at": "2026-10-02T14:57:34Z"
+        }
+    ]
+}

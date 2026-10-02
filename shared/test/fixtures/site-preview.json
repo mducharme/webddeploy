@@ -1,0 +1,90 @@
+{
+    "api_version": 1,
+    "site": {
+        "name": "testsite-alt-main",
+        "url": "https://testsite-alt-main.staging.ddeploy.test",
+        "php": "8.3",
+        "node": "20",
+        "build": true,
+        "docroot": "web",
+        "db": "testsite",
+        "branch": "alt-main",
+        "sha": "3517ae64fad314ea74a68e8a6323a6db7734a8b7",
+        "committed_at": "2026-10-02T12:37:52+00:00",
+        "subject": "alt-main v2",
+        "repo": "ssh://gitfixture@127.0.0.1/srv/git/testsite.git",
+        "preview": {
+            "project": "testsite",
+            "branch": "alt-main",
+            "mode": "shared"
+        },
+        "last_event": {
+            "ts": "2026-10-02T15:03:21Z",
+            "run_id": "20261002T150321Z-ac84c7",
+            "site": "testsite-alt-main",
+            "kind": "provision-preview",
+            "phase": "succeeded",
+            "trigger": "manual",
+            "project": "testsite",
+            "branch": "alt-main",
+            "to_sha": "3517ae64fad314ea74a68e8a6323a6db7734a8b7",
+            "subject": "alt-main v2",
+            "duration_s": 0
+        }
+    },
+    "config": {
+        "source": "preview+ddeploy",
+        "php": "8.3",
+        "docroot": "web",
+        "db_name": "testsite",
+        "hostnames": [
+            "testsite-alt-main.staging.ddeploy.test"
+        ],
+        "custom_domains": [],
+        "upload_dirs": [
+            "private-uploads",
+            "web/uploads"
+        ],
+        "persistent_files": [
+            "shared-notes.txt"
+        ],
+        "basic_auth": true,
+        "node": {
+            "spec": "20",
+            "source": ".nvmrc"
+        },
+        "build": true,
+        "queue_workers": [],
+        "schedule": [],
+        "settings": {
+            "basic_auth": "true",
+            "client_max_body_size": "512m",
+            "fpm_max_children": "20",
+            "security_headers": "true",
+            "static_cache": "7d",
+            "deny_php_in_uploads": "true",
+            "db_backup_retention_days": "14",
+            "nodejs_version": "20",
+            "build": "true",
+            "composer_dev": "false",
+            "additional_hostnames": [],
+            "additional_fqdns": [],
+            "auth_exempt_paths": [
+                "/health"
+            ],
+            "deny_php_paths": [
+                "/uploads"
+            ],
+            "backup_exclude": [
+                "exclude-me/**"
+            ],
+            "preview_branches": []
+        }
+    },
+    "config_error": null,
+    "overrides": {},
+    "deploy_branch": null,
+    "releases": [],
+    "legacy_deploys": [],
+    "previews": []
+}

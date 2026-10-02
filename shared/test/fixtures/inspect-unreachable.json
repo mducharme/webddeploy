@@ -1,0 +1,6 @@
+{
+    "api_version": 1,
+    "url": "ssh://gitfixture@127.0.0.1/srv/git/nope.git",
+    "reachable": false,
+    "error": "Please make sure you have the correct access rights and the repository exists. "
+}

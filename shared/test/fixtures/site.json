@@ -1,0 +1,121 @@
+{
+    "api_version": 1,
+    "site": {
+        "name": "testsite",
+        "url": "https://testsite.staging.ddeploy.test",
+        "php": "8.3",
+        "node": "20",
+        "build": true,
+        "docroot": "web",
+        "db": "testsite",
+        "branch": "main",
+        "sha": "947c19f53c8a55720adbd57ef49b6efcdadfea94",
+        "committed_at": "2026-10-02T12:39:41+00:00",
+        "subject": "add a hooks.post-start step that clones a private repo",
+        "repo": "ssh://gitfixture@127.0.0.1/srv/git/testsite.git",
+        "preview": null,
+        "last_event": {
+            "ts": "2026-10-02T15:03:23Z",
+            "run_id": "20261002T150322Z-875dd0",
+            "site": "testsite",
+            "kind": "deploy",
+            "phase": "succeeded",
+            "trigger": "manual",
+            "from_sha": "947c19f53c8a55720adbd57ef49b6efcdadfea94",
+            "to_sha": "947c19f53c8a55720adbd57ef49b6efcdadfea94",
+            "subject": "add a hooks.post-start step that clones a private repo",
+            "branch": "main",
+            "duration_s": 1
+        }
+    },
+    "config": {
+        "source": "ddev+ddeploy",
+        "php": "8.3",
+        "docroot": "web",
+        "db_name": "testsite",
+        "hostnames": [
+            "testsite.staging.ddeploy.test",
+            "alt-testsite.staging.ddeploy.test"
+        ],
+        "custom_domains": [
+            "custom.ddeploy.test"
+        ],
+        "upload_dirs": [
+            "private-uploads",
+            "web/uploads"
+        ],
+        "persistent_files": [
+            "shared-notes.txt"
+        ],
+        "basic_auth": false,
+        "node": {
+            "spec": "20",
+            "source": ".nvmrc"
+        },
+        "build": true,
+        "queue_workers": [
+            "sleep 1000"
+        ],
+        "schedule": [
+            "* * * * *\techo schedule-ran-$(date +%s) >> /tmp/schedule-marker.txt"
+        ],
+        "settings": {
+            "basic_auth": "false",
+            "client_max_body_size": "128m",
+            "fpm_max_children": "20",
+            "security_headers": "true",
+            "static_cache": "7d",
+            "deny_php_in_uploads": "true",
+            "db_backup_retention_days": "14",
+            "nodejs_version": "20",
+            "build": "true",
+            "composer_dev": "false",
+            "additional_hostnames": [
+                "alt-testsite"
+            ],
+            "additional_fqdns": [
+                "custom.ddeploy.test"
+            ],
+            "auth_exempt_paths": [
+                "/health"
+            ],
+            "deny_php_paths": [
+                "/uploads"
+            ],
+            "backup_exclude": [
+                "exclude-me/**"
+            ],
+            "preview_branches": []
+        }
+    },
+    "config_error": null,
+    "overrides": {
+        "client_max_body_size": "128m"
+    },
+    "deploy_branch": null,
+    "releases": [
+        {
+            "id": "20261002T150314Z-947c19f53c8a",
+            "sha": "947c19f53c8a55720adbd57ef49b6efcdadfea94",
+            "current": false
+        },
+        {
+            "id": "20261002T150322Z-947c19f53c8a",
+            "sha": "947c19f53c8a55720adbd57ef49b6efcdadfea94",
+            "current": true
+        }
+    ],
+    "legacy_deploys": [
+        {
+            "ts": "2026-10-02T15:03:16Z",
+            "sha": "947c19f53c8a55720adbd57ef49b6efcdadfea94"
+        },
+        {
+            "ts": "2026-10-02T15:03:22Z",
+            "sha": "947c19f53c8a55720adbd57ef49b6efcdadfea94"
+        }
+    ],
+    "previews": [
+        "testsite-alt-main"
+    ]
+}

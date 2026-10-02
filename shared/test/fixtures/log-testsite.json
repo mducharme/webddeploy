@@ -1,0 +1,9 @@
+{
+    "api_version": 1,
+    "name": "testsite",
+    "size": 43626,
+    "offset": 41869,
+    "next_offset": 43626,
+    "rotated": false,
+    "text": "2026-10-02T14:57:40Z ops hook (post-deploy): 50-marker.sh\n2026-10-02T14:57:40Z ops hook (post-deploy): 99-slow.sh\n2026-10-02T14:57:44Z removed (purge_db=1 purge_files=1 purge_persistent=0)\n2026-10-02T15:03:15Z provision: started (web (admin@example.com)) \u2014 php=8.3 docroot=web db=testsite (laravel), at 947c19f \"add a hooks.post-start step that clones a private repo\"\n2026-10-02T15:03:15Z deploy: node build: node=v20.20.2 pm=npm path=.\n2026-10-02T15:03:15Z deploy: node build ok in 0s\n2026-10-02T15:03:15Z deploy: exec: rm -rf /tmp/private-lib-probe && git clone ssh://gitfixture@127.0.0.1/srv/git/private-lib.git /tmp/private-lib-probe\n2026-10-02T15:03:15Z deploy: exec: touch .post-deploy-ran\n2026-10-02T15:03:15Z provision: exec: touch .post-provision-ran\n2026-10-02T15:03:16Z provision: done in 2s \u2014 https://testsite.staging.ddeploy.test\n2026-10-02T15:03:17Z db-import: loaded 20261002T150316Z-12cd51.sql.gz into 'testsite' (web (admin@example.com)) \u2014 undo snapshot 20261002T150316Z-pre-import\n2026-10-02T15:03:20Z env: set APP_NAME MAIL_PASSWORD (web (admin@example.com))\n2026-10-02T15:03:20Z settings: client_max_body_size=128m (web (admin@example.com)) \u2014 applies on next deploy\n2026-10-02T15:03:22Z deploy: started (manual) \u2014 947c19f -> 947c19f \"add a hooks.post-start step that clones a private repo\"\n2026-10-02T15:03:22Z deploy: node build: node=v20.20.2 pm=npm path=.\n2026-10-02T15:03:22Z deploy: node build ok in 0s\n2026-10-02T15:03:22Z deploy: exec: rm -rf /tmp/private-lib-probe && git clone ssh://gitfixture@127.0.0.1/srv/git/private-lib.git /tmp/private-lib-probe\n2026-10-02T15:03:22Z deploy: exec: touch .post-deploy-ran\n2026-10-02T15:03:22Z ops hook (post-deploy): 50-marker.sh\n2026-10-02T15:03:22Z deploy: done at 947c19f in 0s\n"
+}

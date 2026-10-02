@@ -1,0 +1,509 @@
+import {
+  PREVIEW_KINDS,
+  SECRET_KEY,
+  envChangeRequest,
+  settingsRequest,
+  type EnvResponse,
+  collapseRuns,
+  isTerminal,
+  patterns,
+  provisionRequest,
+  runFromShow,
+  siteHistory,
+  type Me,
+  type Run,
+} from '@webddeploy/shared';
+import { Readable, Transform } from 'node:stream';
+import { Hono, type Context } from 'hono';
+import { streamSSE, type SSEStreamingApi } from 'hono/streaming';
+import { z } from 'zod';
+import type { AppDeps, AppEnv } from '../app.ts';
+import { DdeployError } from '../ddeploy/connector.ts';
+import type { ManagedServer } from '../servers.ts';
+
+// Loose on purpose: these helpers only read params and query strings.
+type Ctx = Context<any, string>;
+
+function bad(message: string): never {
+  throw new DdeployError('bad_request', message);
+}
+
+function siteParam(c: Ctx): string {
+  const name = c.req.param('name') ?? '';
+  if (!patterns.siteName.test(name)) bad(`invalid site name '${name}'`);
+  return name;
+}
+
+function runParam(c: Ctx): string {
+  const id = c.req.param('id') ?? '';
+  if (!patterns.runId.test(id)) bad(`invalid run id '${id}'`);
+  return id;
+}
+
+function intQuery(c: Ctx, key: string, def: number, max: number): number {
+  const raw = c.req.query(key);
+  if (raw == null || raw === '') return def;
+  const n = Number(raw);
+  if (!Number.isInteger(n) || n < 0) bad(`${key} must be a non-negative integer`);
+  return Math.min(n, max);
+}
+
+const inspectBody = z.object({
+  repo_url: z.string().trim().regex(patterns.repoUrl, 'an ssh://, git@ or https:// URL'),
+  branch: z
+    .string()
+    .trim()
+    .regex(patterns.branch)
+    .nullish()
+    .or(z.literal('').transform(() => null)),
+});
+
+export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
+  const { config, servers, audit } = deps;
+  const now = deps.now ?? Date.now;
+  const api = new Hono<AppEnv>();
+
+  /** Runs a mutating action with an audit entry before it and its outcome after. */
+  const audited = async (
+    email: string,
+    serverId: string,
+    action: string,
+    target: string | null,
+    detail: unknown,
+    fn: () => Promise<{ body: unknown; runId?: string; status?: 200 | 202 }>,
+    c: Ctx,
+  ) => {
+    const entry = audit.begin({ email, serverId, action, target, detail });
+    try {
+      const r = await fn();
+      audit.succeeded(entry, r.runId);
+      return c.json(r.body, r.status ?? 200);
+    } catch (err) {
+      audit.rejected(entry, (err as Error).message);
+      throw err;
+    }
+  };
+
+  api.get('/me', (c) => {
+    const u = c.get('user');
+    const me: Me = { email: u.email, name: u.name, picture: u.picture, servers: servers.list() };
+    return c.json(me);
+  });
+
+  api.get('/activity', (c) => c.json({ entries: audit.list(intQuery(c, 'limit', 100, 1000)) }));
+
+  const srv = new Hono<AppEnv & { Variables: { server: ManagedServer } }>();
+  srv.use('*', async (c, next) => {
+    const s = servers.get(c.req.param('serverId') ?? '');
+    if (!s) return c.json({ error: { code: 'not_found', message: 'no such server' } }, 404);
+    c.set('server', s);
+    await next();
+  });
+
+  srv.get('/info', async (c) => {
+    const s = c.get('server');
+    return c.json(await s.cache.get('info', 5 * 60_000, () => s.client.info(), { fresh: !!c.req.query('fresh') }));
+  });
+
+  srv.get('/sites', async (c) => {
+    const s = c.get('server');
+    return c.json(await s.cache.get('sites', config.sitesCacheMs, () => s.client.sites(), { fresh: !!c.req.query('fresh') }));
+  });
+
+  const siteDetail = (s: ManagedServer, name: string, fresh = false) =>
+    s.cache.get(`site:${name}`, 15_000, () => s.client.site(name), { fresh });
+
+  srv.get('/sites/:name', async (c) => c.json(await siteDetail(c.get('server'), siteParam(c), !!c.req.query('fresh'))));
+
+  srv.get('/sites/:name/runs', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const [{ events }, detail] = await Promise.all([s.client.events({ site: name, limit: 2000 }), siteDetail(s, name)]);
+    const runs: Run[] = siteHistory(events, detail.legacy_deploys, name);
+    return c.json({ runs });
+  });
+
+  srv.get('/sites/:name/previews', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const [active, { events }] = await Promise.all([s.client.previews(name), s.client.events({ project: name, limit: 2000 })]);
+    const history = collapseRuns(events.filter((e) => PREVIEW_KINDS.has(e.kind)));
+    return c.json({ active: active.previews, history });
+  });
+
+  srv.post('/sites/:name/deploy', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const entry = audit.begin({ email: user.email, serverId: s.ref.id, action: 'deploy', target: name });
+    try {
+      const { run_id } = await s.client.startDeploy(name, user.email);
+      audit.succeeded(entry, run_id);
+      s.cache.invalidate('sites');
+      s.cache.invalidate(`site:${name}`);
+      return c.json({ run_id }, 202);
+    } catch (err) {
+      audit.rejected(entry, (err as Error).message);
+      throw err;
+    }
+  });
+
+  srv.post('/provision/inspect', async (c) => {
+    const parsed = inspectBody.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) bad(parsed.error.issues.map((i) => `${i.path.join('.')}: ${i.message}`).join('; '));
+    return c.json(await c.get('server').client.inspectRepo(parsed.data.repo_url, parsed.data.branch));
+  });
+
+  srv.post('/provision', async (c) => {
+    const s = c.get('server');
+    const user = c.get('user');
+    const parsed = provisionRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) {
+      return c.json(
+        {
+          error: { code: 'bad_request', message: 'invalid provision request' },
+          issues: parsed.error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+        },
+        400,
+      );
+    }
+    const req = parsed.data;
+    const entry = audit.begin({ email: user.email, serverId: s.ref.id, action: 'provision', target: req.name, detail: req });
+    try {
+      const { run_id } = await s.client.startProvision(req, user.email);
+      audit.succeeded(entry, run_id);
+      s.cache.invalidate('sites');
+      return c.json({ run_id }, 202);
+    } catch (err) {
+      audit.rejected(entry, (err as Error).message);
+      throw err;
+    }
+  });
+
+  srv.get('/doctor', async (c) => {
+    const s = c.get('server');
+    const site = c.req.query('site') || undefined;
+    if (site && !patterns.siteName.test(site)) bad(`invalid site name '${site}'`);
+    return c.json(await s.cache.get(`doctor:${site ?? '*'}`, config.doctorCacheMs, () => s.client.doctor(site), { fresh: !!c.req.query('fresh') }));
+  });
+
+  srv.get('/logs', async (c) => c.json(await c.get('server').client.logs()));
+
+  srv.get('/logs/:name', async (c) => {
+    const name = siteParam(c);
+    const offset = c.req.query('offset');
+    return c.json(
+      await c.get('server').client.log(name, offset != null ? { offset: intQuery(c, 'offset', 0, Number.MAX_SAFE_INTEGER) } : { lines: intQuery(c, 'lines', 200, 5000) }),
+    );
+  });
+
+  srv.get('/logs/:name/stream', (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const lines = intQuery(c, 'lines', 200, 5000);
+    return streamSSE(c, async (stream) => {
+      const beat = heartbeat(stream);
+      const first = await s.client.log(name, { lines });
+      await sendChunk(stream, first);
+      let offset = first.next_offset;
+      while (!stream.aborted) {
+        await stream.sleep(config.logPollMs);
+        if (stream.aborted) break;
+        try {
+          // Coalesced: every tab following this log at the same offset
+          // shares one ddeploy call per poll window.
+          const at = offset;
+          const chunk = await s.polls.get(`log:${name}:${at}`, config.logPollMs, () => s.client.log(name, { offset: at }));
+          if (chunk.rotated || chunk.text) await sendChunk(stream, chunk);
+          offset = chunk.next_offset;
+          await beat();
+        } catch (err) {
+          await stream.writeSSE({ event: 'error', data: JSON.stringify({ message: (err as Error).message }) });
+          break;
+        }
+      }
+    });
+  });
+
+  srv.get('/runs', async (c) => {
+    const s = c.get('server');
+    const site = c.req.query('site') || undefined;
+    if (site && !patterns.siteName.test(site)) bad(`invalid site name '${site}'`);
+    const limit = intQuery(c, 'limit', 50, 500);
+    const { events } = await s.client.events({ site, limit: Math.min(limit * 3, 5000) });
+    return c.json({ runs: collapseRuns(events).slice(0, limit) });
+  });
+
+  srv.get('/runs/:id', async (c) => {
+    const show = await c.get('server').client.runShow(runParam(c));
+    return c.json({ run: runFromShow(show, new Date(now())), meta: show.meta, log_size: show.log_size });
+  });
+
+  srv.get('/runs/:id/log', async (c) => {
+    const id = runParam(c);
+    return c.json(await c.get('server').client.runLog(id, { offset: intQuery(c, 'offset', 0, Number.MAX_SAFE_INTEGER) }));
+  });
+
+  // Live run: its state whenever it changes, its output as it grows, and
+  // `end` once it's finished and every byte of output has been sent.
+  srv.get('/runs/:id/stream', (c) => {
+    const s = c.get('server');
+    const id = runParam(c);
+    let offset = intQuery(c, 'offset', 0, Number.MAX_SAFE_INTEGER);
+    return streamSSE(c, async (stream) => {
+      const beat = heartbeat(stream);
+      let lastState = '';
+      while (!stream.aborted) {
+        let run: Run;
+        let logSize: number | null;
+        try {
+          const show = await s.polls.get(`run:${id}`, 900, () => s.client.runShow(id));
+          run = runFromShow(show, new Date(now()));
+          logSize = show.log_size;
+        } catch (err) {
+          await stream.writeSSE({ event: 'error', data: JSON.stringify({ message: (err as Error).message }) });
+          return;
+        }
+        const state = JSON.stringify(run);
+        if (state !== lastState) {
+          lastState = state;
+          await stream.writeSSE({ event: 'run', data: state });
+        }
+        let drained = true;
+        if (logSize != null && logSize > offset) {
+          const at = offset;
+          const chunk = await s.polls.get(`runlog:${id}:${at}`, 900, () => s.client.runLog(id, { offset: at }));
+          if (chunk.text) await sendChunk(stream, chunk);
+          offset = chunk.next_offset;
+          drained = offset >= chunk.size;
+        }
+        if (isTerminal(run.phase) && drained) {
+          s.cache.invalidate('sites');
+          s.cache.invalidate(`site:${run.site}`);
+          await stream.writeSSE({ event: 'end', data: JSON.stringify({ phase: run.phase }) });
+          return;
+        }
+        await beat();
+        await stream.sleep(drained ? 1000 : 50);
+      }
+    });
+  });
+
+  srv.post('/runs/:id/cancel', async (c) => {
+    const s = c.get('server');
+    const id = runParam(c);
+    const user = c.get('user');
+    return audited(user.email, s.ref.id, 'run.cancel', id, undefined, async () => {
+      await s.client.cancelRun(id, user.email);
+      return { body: { run_id: id, cancelled: true }, runId: id };
+    }, c);
+  });
+
+  // --- deploy recovery ---------------------------------------------------
+
+  srv.post('/sites/:name/rollback', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const body = z.object({ sha: z.string().regex(patterns.sha).nullish() }).safeParse(await c.req.json().catch(() => ({})));
+    if (!body.success) bad('sha must be a commit SHA');
+    return audited(user.email, s.ref.id, 'rollback', name, { sha: body.data.sha ?? null }, async () => {
+      const { run_id } = await s.client.startRollback(name, user.email, body.data.sha);
+      invalidateSite(s, name);
+      return { body: { run_id }, runId: run_id, status: 202 };
+    }, c);
+  });
+
+  srv.get('/sites/:name/commits', async (c) => {
+    const name = siteParam(c);
+    const from = c.req.query('from') ?? '';
+    const to = c.req.query('to') ?? '';
+    if (!patterns.sha.test(from) || !patterns.sha.test(to)) bad('from and to must be commit SHAs');
+    const s = c.get('server');
+    return c.json(await s.cache.get(`commits:${name}:${from}:${to}`, 3600_000, () => s.client.commits(name, from, to)));
+  });
+
+  srv.get('/sites/:name/branches', async (c) => c.json(await c.get('server').client.branches(siteParam(c))));
+
+  // --- environment -------------------------------------------------------
+  // Secret-looking values never leave the server unless asked for one at
+  // a time (audited); the rest are shown as they are.
+
+  srv.get('/sites/:name/env', async (c) => c.json(maskEnv(await c.get('server').client.env(siteParam(c)))));
+
+  srv.post('/sites/:name/env/reveal', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const key = z.object({ key: z.string().regex(patterns.envKey) }).safeParse(await c.req.json().catch(() => null));
+    if (!key.success) bad('key required');
+    const env = await s.client.env(name);
+    const entry = env.entries.find((e) => e.key === key.data.key);
+    if (!entry) throw new DdeployError('not_found', `no ${key.data.key} in ${name}'s .env`);
+    audit.succeeded(audit.begin({ email: c.get('user').email, serverId: s.ref.id, action: 'env.reveal', target: name, detail: { key: entry.key } }));
+    return c.json({ key: entry.key, value: entry.value });
+  });
+
+  srv.put('/sites/:name/env', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const parsed = envChangeRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return issues(c, parsed.error);
+    const { set, unset } = parsed.data;
+    // The audit log gets key names, never values.
+    return audited(user.email, s.ref.id, 'env.change', name, { set: Object.keys(set), unset }, async () => {
+      const env = await s.client.applyEnv(name, user.email, set, unset);
+      return { body: maskEnv(env) };
+    }, c);
+  });
+
+  // --- settings ----------------------------------------------------------
+
+  srv.put('/sites/:name/settings', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const parsed = settingsRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return issues(c, parsed.error);
+    const { set, unset, branch } = parsed.data;
+    if (!Object.keys(set).length && !unset.length && branch === undefined) bad('nothing to change');
+    return audited(user.email, s.ref.id, 'settings.change', name, parsed.data, async () => {
+      const detail = await s.client.applySettings(name, user.email, set, unset, branch);
+      invalidateSite(s, name);
+      return { body: detail };
+    }, c);
+  });
+
+  // --- database ----------------------------------------------------------
+
+  srv.get('/sites/:name/db', async (c) => c.json(await c.get('server').client.dbInfo(siteParam(c))));
+
+  srv.post('/sites/:name/db/credentials', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    return audited(c.get('user').email, s.ref.id, 'db.credentials', name, undefined, async () => ({ body: await s.client.dbCredentials(name) }), c);
+  });
+
+  srv.get('/sites/:name/db/dump', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const snapshot = c.req.query('snapshot') || undefined;
+    if (snapshot && !patterns.snapshotId.test(snapshot)) bad('invalid snapshot id');
+    const entry = audit.begin({ email: c.get('user').email, serverId: s.ref.id, action: 'db.download', target: name, detail: { snapshot: snapshot ?? null } });
+    let dump;
+    try {
+      dump = await s.client.dbDump(name, snapshot);
+    } catch (err) {
+      audit.rejected(entry, (err as Error).message);
+      throw err;
+    }
+    audit.succeeded(entry);
+    dump.done.catch((err: Error) => console.warn(`db dump of ${name} ended badly: ${err.message}`));
+    const filename = `${name}-${snapshot ?? new Date(now()).toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z'}.sql.gz`;
+    return new Response(Readable.toWeb(dump.stdout) as ReadableStream, {
+      headers: {
+        'content-type': 'application/gzip',
+        'content-disposition': `attachment; filename="${filename}"`,
+        'cache-control': 'no-store',
+      },
+    });
+  });
+
+  srv.post('/sites/:name/db/import', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const body = c.req.raw.body;
+    if (!body) bad('send the dump as the request body');
+    const length = Number(c.req.header('content-length') ?? 0);
+    const info = await s.cache.get('info', 5 * 60_000, () => s.client.info());
+    const max = info.limits?.db_import_max_bytes;
+    if (max && length > max) bad(`the dump is larger than the ${Math.round(max / 1024 / 1024)} MB limit`);
+    const filename = (c.req.header('x-filename') ?? 'upload').slice(0, 200);
+    return audited(user.email, s.ref.id, 'db.import', name, { filename, bytes: length || null }, async () => {
+      // Content-Length can be absent (chunked) or wrong: count as we go too.
+      // ddeploy enforces the same limit on its side.
+      const upload = Readable.fromWeb(body as never).pipe(byteLimit(max ?? Infinity));
+      const { run_id } = await s.client.startDbImport(name, user.email, upload);
+      return { body: { run_id }, runId: run_id, status: 202 };
+    }, c);
+  });
+
+  srv.post('/sites/:name/db/snapshot', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    return audited(user.email, s.ref.id, 'db.snapshot', name, undefined, async () => {
+      const { run_id } = await s.client.startDbSnapshot(name, user.email);
+      return { body: { run_id }, runId: run_id, status: 202 };
+    }, c);
+  });
+
+  srv.post('/sites/:name/db/restore', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const body = z.object({ snapshot: z.string().regex(patterns.snapshotId) }).safeParse(await c.req.json().catch(() => null));
+    if (!body.success) bad('snapshot id required');
+    return audited(user.email, s.ref.id, 'db.restore', name, { snapshot: body.data.snapshot }, async () => {
+      const { run_id } = await s.client.startDbRestore(name, user.email, body.data.snapshot);
+      return { body: { run_id }, runId: run_id, status: 202 };
+    }, c);
+  });
+
+  api.route('/servers/:serverId', srv);
+  return api;
+}
+
+async function sendChunk(stream: SSEStreamingApi, chunk: { text: string; next_offset: number; rotated: boolean }) {
+  await stream.writeSSE({ event: 'chunk', data: JSON.stringify({ text: chunk.text, next_offset: chunk.next_offset, rotated: chunk.rotated }) });
+}
+
+/** Writes a ping when nothing else was sent for a while: proxies (Cloudflare: ~100s) cut idle streams. */
+function heartbeat(stream: SSEStreamingApi, everyMs = 20_000): () => Promise<void> {
+  let last = Date.now();
+  const write = stream.writeSSE.bind(stream);
+  stream.writeSSE = async (m) => {
+    last = Date.now();
+    return write(m);
+  };
+  return async () => {
+    if (Date.now() - last > everyMs) await stream.writeSSE({ event: 'ping', data: '{}' });
+  };
+}
+
+function maskEnv(env: EnvResponse) {
+  return {
+    ...env,
+    entries: env.entries.map((e) => {
+      const masked = SECRET_KEY.test(e.key) && e.value !== '';
+      return { ...e, value: masked ? '' : e.value, masked, length: e.value.length };
+    }),
+  };
+}
+
+function invalidateSite(s: ManagedServer, name: string) {
+  s.cache.invalidate('sites');
+  s.cache.invalidate(`site:${name}`);
+}
+
+function issues(c: Ctx, error: z.ZodError) {
+  return c.json(
+    {
+      error: { code: 'bad_request', message: error.issues.map((i) => `${i.path.join('.') || 'request'}: ${i.message}`).join('; ') },
+      issues: error.issues.map((i) => ({ path: i.path.join('.'), message: i.message })),
+    },
+    400,
+  );
+}
+
+function byteLimit(max: number): Transform {
+  let seen = 0;
+  return new Transform({
+    transform(chunk: Buffer, _enc, cb) {
+      seen += chunk.length;
+      if (seen > max) cb(new DdeployError('bad_request', `the dump is larger than the ${Math.round(max / 1024 / 1024)} MB limit`));
+      else cb(null, chunk);
+    },
+  });
+}

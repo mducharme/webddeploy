@@ -1,0 +1,188 @@
+{
+    "api_version": 1,
+    "checked_at": "2026-10-02T15:03:24Z",
+    "server": {
+        "worst": "warn",
+        "checks": [
+            {
+                "status": "ok",
+                "check": "nginx config",
+                "detail": "valid"
+            },
+            {
+                "status": "ok",
+                "check": "nginx service",
+                "detail": "running"
+            },
+            {
+                "status": "ok",
+                "check": "checkout location",
+                "detail": "/opt/ddeploy, every parent root-owned"
+            },
+            {
+                "status": "ok",
+                "check": "disk (/)",
+                "detail": "8% used"
+            },
+            {
+                "status": "ok",
+                "check": "database server (dbhost)",
+                "detail": "reachable"
+            },
+            {
+                "status": "ok",
+                "check": "webhook listener",
+                "detail": "running"
+            },
+            {
+                "status": "off",
+                "check": "web UI",
+                "detail": "disabled (WEB_ENABLED=false)"
+            },
+            {
+                "status": "ok",
+                "check": "node (nvm v0.40.8)",
+                "detail": "installed: v20.20.2 v22.23.3"
+            },
+            {
+                "status": "ok",
+                "check": "uploads backup",
+                "detail": "enabled, schedule '17 * * * *'"
+            },
+            {
+                "status": "ok",
+                "check": "database backup",
+                "detail": "enabled, schedule '23 * * * *'"
+            },
+            {
+                "status": "off",
+                "check": "prune-previews",
+                "detail": "disabled (PREVIEW_PRUNE_ENABLED=false)"
+            },
+            {
+                "status": "ok",
+                "check": "cron",
+                "detail": "running (drives /etc/cron.d/ddeploy-* \u2014 not visible in 'crontab -l')"
+            },
+            {
+                "status": "ok",
+                "check": "object storage (ddeploy-test)",
+                "detail": "reachable"
+            },
+            {
+                "status": "warn",
+                "check": "cert (wildcard, staging.ddeploy.test)",
+                "detail": "expires within 14d (Oct  3 12:36:39 2026 GMT); certbot.timer is active, so renewal is failing \u2014 see 'journalctl -u certbot' or 'certbot renew --dry-run'"
+            },
+            {
+                "status": "ok",
+                "check": "certbot.timer",
+                "detail": "active (handles renewal)"
+            }
+        ]
+    },
+    "sites": [
+        {
+            "name": "testsite",
+            "worst": "warn",
+            "preview": null,
+            "checks": [
+                {
+                    "status": "ok",
+                    "check": "vhost",
+                    "detail": "enabled"
+                },
+                {
+                    "status": "ok",
+                    "check": "php8.3-fpm",
+                    "detail": "running"
+                },
+                {
+                    "status": "ok",
+                    "check": "last deploy",
+                    "detail": "main @ 947c19f (2026-10-02)"
+                },
+                {
+                    "status": "ok",
+                    "check": "node",
+                    "detail": "v20.20.2 (20, from .nvmrc)"
+                },
+                {
+                    "status": "ok",
+                    "check": "frontend build",
+                    "detail": "built 0m ago, node v20.20.2 (npm, 0s)"
+                },
+                {
+                    "status": "ok",
+                    "check": "http",
+                    "detail": "GET / -> 200 in 4ms"
+                },
+                {
+                    "status": "ok",
+                    "check": "database",
+                    "detail": "reachable as 'testsite'"
+                },
+                {
+                    "status": "warn",
+                    "check": "cert (custom domain)",
+                    "detail": "expires within 14d (Oct  3 12:36:47 2026 GMT); certbot.timer is active, so renewal is failing \u2014 see 'journalctl -u certbot' or 'certbot renew --dry-run'"
+                },
+                {
+                    "status": "ok",
+                    "check": "database backups",
+                    "detail": "2 recoverable dump(s), newest is 1h old"
+                },
+                {
+                    "status": "ok",
+                    "check": "uploads backup",
+                    "detail": "'private-uploads' has synced content (checked 1 of 2 upload_dirs)"
+                }
+            ]
+        },
+        {
+            "name": "testsite-alt-main",
+            "worst": "ok",
+            "preview": {
+                "project": "testsite",
+                "mode": "shared"
+            },
+            "checks": [
+                {
+                    "status": "ok",
+                    "check": "vhost",
+                    "detail": "enabled"
+                },
+                {
+                    "status": "ok",
+                    "check": "php8.3-fpm",
+                    "detail": "running"
+                },
+                {
+                    "status": "ok",
+                    "check": "last deploy",
+                    "detail": "alt-main @ 3517ae6 (2026-10-02)"
+                },
+                {
+                    "status": "ok",
+                    "check": "node",
+                    "detail": "v20.20.2 (20, from .nvmrc)"
+                },
+                {
+                    "status": "ok",
+                    "check": "frontend build",
+                    "detail": "built 0m ago, node v20.20.2 (npm, 0s)"
+                },
+                {
+                    "status": "ok",
+                    "check": "http",
+                    "detail": "GET / -> 401 (basic auth) in 2ms"
+                },
+                {
+                    "status": "ok",
+                    "check": "database",
+                    "detail": "reachable as 'testsite'"
+                }
+            ]
+        }
+    ]
+}

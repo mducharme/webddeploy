@@ -1,0 +1,28 @@
+{
+    "api_version": 1,
+    "url": "ssh://gitfixture@127.0.0.1/srv/git/testsite.git",
+    "reachable": true,
+    "default_branch": "main",
+    "branches": [
+        "alt-main",
+        "main"
+    ],
+    "branch": "main",
+    "detected": {
+        "ddev": {
+            "name": "testsite",
+            "php_version": "8.3",
+            "docroot": "web",
+            "nodejs_version": null
+        },
+        "ddeploy_config": true,
+        "cms": null,
+        "cms_docroot": null,
+        "package_json": true,
+        "nvmrc": "20",
+        "composer_json": false
+    },
+    "requires": {
+        "php": false
+    }
+}

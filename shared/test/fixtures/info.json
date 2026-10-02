@@ -1,0 +1,40 @@
+{
+    "api_version": 1,
+    "hostname": "web",
+    "ddeploy": {
+        "sha": "dad5dca19b1f2dbcc1f27edfdf432ef74dc2b3d2",
+        "branch": "web-api"
+    },
+    "base_domain": "staging.ddeploy.test",
+    "php": {
+        "default": "8.3",
+        "baseline": [
+            "8.3"
+        ],
+        "installed": [
+            "8.2",
+            "8.3"
+        ]
+    },
+    "node": {
+        "enabled": true,
+        "default": "22"
+    },
+    "features": {
+        "webhook": true,
+        "backups": true,
+        "db_backups": true,
+        "preview_prune": false,
+        "web": false
+    },
+    "preview_db_mode": "shared",
+    "basic_auth_default": false,
+    "defaults": {
+        "client_max_body_size": "64m",
+        "fpm_max_children": "5",
+        "db_backup_retention_days": "7"
+    },
+    "limits": {
+        "db_import_max_bytes": 2147483648
+    }
+}

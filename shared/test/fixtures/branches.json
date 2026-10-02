@@ -1,0 +1,9 @@
+{
+    "api_version": 1,
+    "default_branch": "main",
+    "tracked": null,
+    "branches": [
+        "alt-main",
+        "main"
+    ]
+}

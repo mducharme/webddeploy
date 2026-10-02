@@ -1,0 +1,27 @@
+# webddeploy — web UI for ddeploy. Installed by deploy/install.sh.
+#
+# Deliberately no ProtectSystem/ProtectHome/NoNewPrivileges: the service's
+# only privileged action is `sudo -n /opt/ddeploy/provision.sh api ...`
+# (the rule `ddeploy init-web` installs), and that runs as a child of this
+# unit — sandboxing here would sandbox ddeploy too (NoNewPrivileges breaks
+# sudo outright; ProtectHome hides the sites ddeploy reads). The boundary
+# is the sudoers rule plus ddeploy's own argument validation, not this
+# unit. Long runs (deploy, provision) leave this unit entirely: ddeploy
+# starts them as transient units of their own (systemd-run).
+[Unit]
+Description=webddeploy (web UI for ddeploy)
+After=network.target
+
+[Service]
+Type=simple
+User=ddeploy-web
+Group=ddeploy-web
+WorkingDirectory=/opt/webddeploy
+EnvironmentFile=/etc/webddeploy/env
+ExecStart=@NODE_BIN@ /opt/webddeploy/server/src/index.ts
+Restart=on-failure
+RestartSec=2
+PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target
