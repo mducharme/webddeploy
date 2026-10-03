@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { createApp } from '../src/app.ts';
+import { Access } from '../src/access.ts';
 import { AuditLog } from '../src/audit.ts';
 import type { OidcProvider } from '../src/auth/google.ts';
 import { SessionStore } from '../src/auth/sessions.ts';
@@ -15,6 +16,8 @@ export const fixture = (name: string): unknown =>
 
 export const ORIGIN = 'https://ddeploy.example.test';
 export const ADMIN = 'admin@example.com';
+export const SUPER = 'super@example.com';
+export const VIEWER = 'viewer@example.com';
 
 /** A connector answering from the real fixtures, recording every call. */
 export class FakeConnector implements Connector {
@@ -64,6 +67,7 @@ export class FakeConnector implements Connector {
       case 'settings': return fixture('site');
       case 'branches': return fixture('branches');
       case 'uploads': return fixture('uploads');
+      case 'config': return fixture('config');
       case 'backups':
         if (['keep', 'unkeep', 'delete'].includes(args[1]!)) return { api_version: 1, file: args[4], action: args[1] };
         return fixture('backups');
@@ -83,7 +87,9 @@ export function testConfig(over: Record<string, string> = {}): Config {
     PUBLIC_URL: ORIGIN,
     GOOGLE_CLIENT_ID: 'client-id',
     GOOGLE_CLIENT_SECRET: 'client-secret',
+    SUPERADMIN_EMAILS: SUPER,
     ADMIN_EMAILS: ADMIN,
+    VIEWER_EMAILS: VIEWER,
     DATABASE_PATH: ':memory:',
     STATIC_DIR: '/nonexistent',
     LOG_POLL_MS: '200',
@@ -91,7 +97,7 @@ export function testConfig(over: Record<string, string> = {}): Config {
   });
 }
 
-export function makeApp(opts: { config?: Config; oidc?: OidcProvider | null; connector?: FakeConnector; now?: () => number } = {}) {
+export function makeApp(opts: { config?: Config; oidc?: OidcProvider | null; connector?: FakeConnector; now?: () => number; as?: string } = {}) {
   const config = opts.config ?? testConfig();
   const db = openDb(':memory:');
   const connector = opts.connector ?? new FakeConnector();
@@ -99,15 +105,16 @@ export function makeApp(opts: { config?: Config; oidc?: OidcProvider | null; con
   servers.add({ id: 'local', name: 'test server' }, connector);
   const sessions = new SessionStore(db, { idleMs: config.sessionIdleMs, maxMs: config.sessionMaxMs, now: opts.now });
   const audit = new AuditLog(db, opts.now);
-  const app = createApp({ config, db, servers, oidc: opts.oidc ?? null, sessions, audit, now: opts.now });
-  const token = sessions.create({ email: ADMIN, name: 'Admin', picture: null });
+  const access = new Access(db, config, opts.now);
+  const app = createApp({ config, db, servers, oidc: opts.oidc ?? null, sessions, audit, access, now: opts.now });
+  const token = sessions.create({ email: opts.as ?? ADMIN, name: 'User', picture: null });
   const cookie = `__Host-wdd_session=${token}`;
   const req = (path: string, init: RequestInit = {}) =>
     app.request(path, {
       ...init,
       headers: { cookie, origin: ORIGIN, ...(init.body ? { 'content-type': 'application/json' } : {}), ...(init.headers ?? {}) },
     });
-  return { app, db, config, connector, sessions, audit, req, cookie };
+  return { app, db, config, connector, sessions, audit, access, req, cookie };
 }
 
 /** Reads a server-sent-events response into {event, data} pairs until it ends. */

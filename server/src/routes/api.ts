@@ -2,6 +2,10 @@ import {
   PREVIEW_KINDS,
   SECRET_KEY,
   envChangeRequest,
+  optionsRequest,
+  serverConfigRequest,
+  SERVER_SETTINGS,
+  userRequest,
   previewBranchRequest,
   previewCreateRequest,
   settingsRequest,
@@ -94,8 +98,53 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
 
   api.get('/me', (c) => {
     const u = c.get('user');
-    const me: Me = { email: u.email, name: u.name, picture: u.picture, servers: servers.list() };
+    const me: Me = { email: u.email, name: u.name, picture: u.picture, role: c.get('role'), servers: servers.list() };
     return c.json(me);
+  });
+
+  // --- super-admin: users and global options --------------------------------
+
+  api.get('/admin/users', (c) => c.json({ users: deps.access.users() }));
+
+  api.put('/admin/users', async (c) => {
+    const user = c.get('user');
+    const parsed = userRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return issues(c, parsed.error);
+    if (parsed.data.email === user.email) bad("you can't change your own role");
+    const entry = audit.begin({ email: user.email, serverId: '-', action: 'user.set', target: parsed.data.email, detail: { role: parsed.data.role } });
+    try {
+      deps.access.setUser(parsed.data.email, parsed.data.role, user.email);
+    } catch (err) {
+      audit.rejected(entry, (err as Error).message);
+      throw err;
+    }
+    audit.succeeded(entry);
+    return c.json({ users: deps.access.users() });
+  });
+
+  api.delete('/admin/users/:email', (c) => {
+    const user = c.get('user');
+    const email = decodeURIComponent(c.req.param('email')).toLowerCase();
+    if (email === user.email) bad("you can't remove yourself");
+    const entry = audit.begin({ email: user.email, serverId: '-', action: 'user.remove', target: email });
+    try {
+      deps.access.removeUser(email);
+    } catch (err) {
+      audit.rejected(entry, (err as Error).message);
+      throw err;
+    }
+    audit.succeeded(entry);
+    return c.json({ users: deps.access.users() });
+  });
+
+  api.get('/admin/options', (c) => c.json({ ...deps.access.options(), allowed_domains: config.allowedDomains }));
+
+  api.put('/admin/options', async (c) => {
+    const user = c.get('user');
+    const parsed = optionsRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return issues(c, parsed.error);
+    audit.succeeded(audit.begin({ email: user.email, serverId: '-', action: 'options.set', target: null, detail: parsed.data }));
+    return c.json({ ...deps.access.setOptions(parsed.data), allowed_domains: config.allowedDomains });
   });
 
   api.get('/activity', (c) => c.json({ entries: audit.list(intQuery(c, 'limit', 100, 1000)) }));
@@ -106,6 +155,25 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
     if (!s) return c.json({ error: { code: 'not_found', message: 'no such server' } }, 404);
     c.set('server', s);
     await next();
+  });
+
+  // --- super-admin: server settings (provisioner.conf) ----------------------
+
+  srv.get('/config', async (c) => c.json(await c.get('server').client.config()));
+
+  srv.put('/config', async (c) => {
+    const s = c.get('server');
+    const user = c.get('user');
+    const parsed = serverConfigRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return issues(c, parsed.error);
+    // Secrets (NOTIFY_WEBHOOK) are recorded as changed, never with their value.
+    const detail = Object.fromEntries(Object.entries(parsed.data.set).map(([k, v]) => [k, SERVER_SETTINGS.find((d) => d.key === k)?.kind === 'secret' ? '(changed)' : v]));
+    return audited(user.email, s.ref.id, 'config.set', null, detail, async () => {
+      const result = await s.client.applyConfig(user.email, parsed.data.set);
+      s.cache.invalidate('info');
+      s.cache.invalidate('doctor');
+      return { body: result };
+    }, c);
   });
 
   srv.get('/info', async (c) => {

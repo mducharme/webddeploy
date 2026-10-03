@@ -21,7 +21,7 @@ export function authRoutes(deps: AppDeps): Hono {
   const app = new Hono();
   const redirectUri = new URL('/auth/callback', config.publicUrl).toString();
 
-  const startSession = (c: Context, user: { email: string; name: string | null; picture: string | null }) => {
+  const startSession = (c: Context, user: { email: string; name: string | null; picture: string | null; hd?: string | null }) => {
     const token = sessions.create(user);
     setCookie(c, sessionCookieName(config), token, {
       httpOnly: true,
@@ -76,7 +76,7 @@ export function authRoutes(deps: AppDeps): Hono {
       console.warn('google sign-in failed:', (err as Error).message);
       return fail(c, 'Google sign-in could not be verified.', 400);
     }
-    const reason = rejectReason(identity, config.adminEmails, config.allowedDomains);
+    const reason = rejectReason(identity, config.allowedDomains, deps.access.roleFor(identity.email, identity.hd) !== null);
     if (reason) {
       console.warn(`sign-in refused: ${reason}`);
       return fail(c, reason);
@@ -87,7 +87,11 @@ export function authRoutes(deps: AppDeps): Hono {
 
   app.get('/dev-login', (c) => {
     if (config.production || !config.devLoginEmail) return c.notFound();
-    startSession(c, { email: config.devLoginEmail, name: 'Development user', picture: null });
+    // ?as=<email>: sign in as someone else, to try roles out (development
+    // only, like the rest of this route; they still need a role).
+    const as = (c.req.query('as') ?? '').trim().toLowerCase();
+    const email = /^[^@\s]+@[^@\s]+$/.test(as) ? as : config.devLoginEmail;
+    startSession(c, { email, name: email === config.devLoginEmail ? 'Development user' : email, picture: null });
     return c.redirect(safeReturnTo(c.req.query('return_to')));
   });
 

@@ -2,12 +2,14 @@ import { useNavigate } from '@tanstack/react-router';
 import { Rocket, Undo2 } from 'lucide-react';
 import { ConfirmButton } from '../components/ui.tsx';
 import { useDeploy, useRollback } from '../lib/api.ts';
+import { useCan } from '../lib/role.tsx';
 import { shortSha } from '../lib/format.ts';
 
 /** Deploy, then follow the new run. */
 export function DeployNowButton({ server, name, label = 'Deploy', confirmLabel }: { server: string; name: string; label?: string; confirmLabel?: string }) {
   const deploy = useDeploy(server);
   const navigate = useNavigate();
+  if (!useCan('admin')) return null;
   return (
     <span className="inline-flex flex-col items-end">
       <ConfirmButton
@@ -26,6 +28,7 @@ export function DeployNowButton({ server, name, label = 'Deploy', confirmLabel }
 export function RollbackButton({ server, name, sha, label }: { server: string; name: string; sha: string; label?: string }) {
   const rollback = useRollback(server);
   const navigate = useNavigate();
+  if (!useCan('admin')) return null;
   return (
     <span className="inline-flex flex-col items-end">
       <ConfirmButton

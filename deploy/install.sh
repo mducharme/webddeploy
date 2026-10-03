@@ -47,7 +47,7 @@ install -d -m 700 -o "$WEB_USER" -g "$WEB_USER" /var/lib/webddeploy
 install -d -m 750 -o root -g "$WEB_USER" /etc/webddeploy
 if [[ ! -f /etc/webddeploy/env ]]; then
     install -m 640 -o root -g "$WEB_USER" deploy/env.example /etc/webddeploy/env
-    info "wrote /etc/webddeploy/env from the example — fill in PUBLIC_URL, GOOGLE_*, ADMIN_EMAILS, then: systemctl restart webddeploy"
+    info "wrote /etc/webddeploy/env from the example — fill in PUBLIC_URL, GOOGLE_*, SUPERADMIN_EMAILS, then: systemctl restart webddeploy"
 fi
 
 sed "s#@NODE_BIN@#$NODE_BIN#" deploy/webddeploy.service > /etc/systemd/system/webddeploy.service
@@ -57,10 +57,13 @@ systemctl enable webddeploy >/dev/null 2>&1
 # Not configured yet (first install): starting would only fail on the
 # missing settings — say what to fill in instead.
 missing=""
-for key in PUBLIC_URL GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET ADMIN_EMAILS; do
+for key in PUBLIC_URL GOOGLE_CLIENT_ID GOOGLE_CLIENT_SECRET; do
     val="$(sed -n "s/^$key=//p" /etc/webddeploy/env | tail -n 1)"
     [[ -n "$val" && "$val" != *example.com* ]] || missing+=" $key"
 done
+# At least one super-admin or admin (pre-roles env files only have ADMIN_EMAILS).
+people="$(sed -n -e 's/^SUPERADMIN_EMAILS=//p' -e 's/^ADMIN_EMAILS=//p' /etc/webddeploy/env | grep -v 'example\.com' | tr -d ' ,\n')"
+[[ -n "$people" ]] || missing+=" SUPERADMIN_EMAILS"
 if [[ -n "$missing" ]]; then
     info "installed, not started: set$missing in /etc/webddeploy/env (sudoedit /etc/webddeploy/env), then: sudo systemctl restart webddeploy"
     exit 0

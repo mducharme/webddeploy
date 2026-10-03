@@ -7,6 +7,7 @@ import { ApiError, uploadFiles, uploadsDownloadUrl, useUploads, useUploadsRestor
 import { bytes, relativeTime } from '../lib/format.ts';
 import { fromDrop, fromFiles, withoutTop, type Picked } from '../lib/pickFiles.ts';
 import { buildTar } from '../lib/tar.ts';
+import { useCan } from '../lib/role.tsx';
 
 export function FilesTab({ server, name }: { server: string; name: string }) {
   const uploads = useUploads(server, name);
@@ -14,6 +15,7 @@ export function FilesTab({ server, name }: { server: string; name: string }) {
   const restore = useUploadsRestore(server);
   const snapshot = useUploadsSnapshot(server);
   const goRun = ({ run_id }: { run_id: string }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } });
+  const canAct = useCan('admin');
 
   if (uploads.isPending) return <Spinner label="Reading the upload folders…" />;
   if (uploads.error) return <ErrorBox error={uploads.error} title="Couldn't read the upload folders" />;
@@ -36,9 +38,11 @@ export function FilesTab({ server, name }: { server: string; name: string }) {
       <Card
         title="Snapshots"
         actions={
-          <Button busy={snapshot.isPending} onClick={() => snapshot.mutate({ site: name }, { onSuccess: goRun })}>
-            <Camera className="size-4" aria-hidden /> Take snapshot
-          </Button>
+          canAct ? (
+            <Button busy={snapshot.isPending} onClick={() => snapshot.mutate({ site: name }, { onSuccess: goRun })}>
+              <Camera className="size-4" aria-hidden /> Take snapshot
+            </Button>
+          ) : null
         }
       >
         <p className="border-b border-stone-200 px-4 py-2 text-xs text-stone-500 dark:border-stone-800">
@@ -60,7 +64,7 @@ export function FilesTab({ server, name }: { server: string; name: string }) {
                   <Td><Mono>{s.dir}</Mono></Td>
                   <Td><Badge tone="neutral">{{ 'pre-import': 'before an upload', 'pre-restore': 'before a restore', manual: 'manual' }[s.reason] ?? s.reason}</Badge></Td>
                   <Td className="text-right">
-                    <ConfirmButton label="Restore" confirmLabel={`Put ${s.dir} back as it was`} onConfirm={() => restore.mutate({ site: name, body: { snapshot: s.id } }, { onSuccess: goRun })} />
+                    {canAct && <ConfirmButton label="Restore" confirmLabel={`Put ${s.dir} back as it was`} onConfirm={() => restore.mutate({ site: name, body: { snapshot: s.id } }, { onSuccess: goRun })} />}
                   </Td>
                 </tr>
               ))}
@@ -85,6 +89,7 @@ function UploadDir({ server, name, dir, maxBytes, onStarted }: { server: string;
   const [error, setError] = useState<string | null>(null);
   const folderInput = useRef<HTMLInputElement>(null);
   const archiveInput = useRef<HTMLInputElement>(null);
+  const canAct = useCan('admin');
 
   const plan = useMemo(() => {
     if (!picked) return null;
@@ -138,14 +143,14 @@ function UploadDir({ server, name, dir, maxBytes, onStarted }: { server: string;
     <Card
       title={<><Mono>{dir.dir}</Mono> <span className="ml-2 font-normal text-stone-500">{dir.exists ? `${dir.files ?? 'many'} file(s) · ${dir.bytes == null ? 'size unknown' : bytes(dir.bytes)}` : 'empty'}</span></>}
       actions={
-        dir.exists && (dir.files ?? 1) > 0 ? (
+        canAct && dir.exists && (dir.files ?? 1) > 0 ? (
           <a href={uploadsDownloadUrl(server, name, dir.dir)} download>
             <Button variant="ghost"><Download className="size-4" aria-hidden /> Download .tar.gz</Button>
           </a>
         ) : null
       }
     >
-      <div className="space-y-3 p-4 text-sm">
+      {canAct && <div className="space-y-3 p-4 text-sm">
         <div
           onDragOver={(e) => {
             e.preventDefault();
@@ -229,7 +234,7 @@ function UploadDir({ server, name, dir, maxBytes, onStarted }: { server: string;
           </div>
         )}
         {error && <p className="text-red-700">{error}</p>}
-      </div>
+      </div>}
     </Card>
   );
 }

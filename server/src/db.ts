@@ -37,6 +37,20 @@ const migrations: string[] = [
    CREATE INDEX audit_log_at ON audit_log (at DESC);`,
   // Outcome 'started' became 'ok' (not every action starts a run).
   `UPDATE audit_log SET outcome = 'ok' WHERE outcome = 'started';`,
+  // Roles: users added in the UI (on top of the config's), global options,
+  // and the Workspace domain a session signed in from (for the
+  // "everyone in the domain is a viewer" option).
+  `CREATE TABLE users (
+     email    TEXT PRIMARY KEY,
+     role     TEXT NOT NULL CHECK (role IN ('viewer', 'admin', 'superadmin')),
+     added_by TEXT NOT NULL,
+     added_at INTEGER NOT NULL
+   );
+   CREATE TABLE options (
+     key   TEXT PRIMARY KEY,
+     value TEXT NOT NULL
+   );
+   ALTER TABLE sessions ADD COLUMN hd TEXT;`,
 ];
 
 export type Db = DatabaseSync;

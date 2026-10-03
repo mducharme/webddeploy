@@ -1,7 +1,9 @@
+import type { Role } from '@webddeploy/shared';
 import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { HTTPException } from 'hono/http-exception';
 import { secureHeaders } from 'hono/secure-headers';
+import { AccessError, requiredRole, ROLE_RANK, type Access } from './access.ts';
 import type { AuditLog } from './audit.ts';
 import type { OidcProvider } from './auth/google.ts';
 import type { Session, SessionStore } from './auth/sessions.ts';
@@ -20,10 +22,11 @@ export interface AppDeps {
   oidc: OidcProvider | null;
   sessions: SessionStore;
   audit: AuditLog;
+  access: Access;
   now?: () => number;
 }
 
-export type AppEnv = { Variables: { user: Session } };
+export type AppEnv = { Variables: { user: Session; role: Role } };
 
 const statusFor: Record<string, 400 | 404 | 409 | 501 | 502 | 503 | 504> = {
   bad_request: 400,
@@ -77,10 +80,16 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
 
   app.use('/api/*', async (c, next) => {
     const user = deps.sessions.get(getCookie(c, sessionCookieName(config)));
-    if (!user || !config.adminEmails.includes(user.email)) {
-      return c.json({ error: { code: 'unauthenticated', message: 'sign in required' } }, 401);
+    if (!user) return c.json({ error: { code: 'unauthenticated', message: 'sign in required' } }, 401);
+    // Resolved on every request: a role change (or removal) applies at once.
+    const role = deps.access.roleFor(user.email, user.hd);
+    if (!role) return c.json({ error: { code: 'unauthenticated', message: "you don't have access anymore" } }, 401);
+    const needed = requiredRole(c.req.method, c.req.path);
+    if (ROLE_RANK[role] < ROLE_RANK[needed]) {
+      return c.json({ error: { code: 'forbidden', message: `this needs the ${needed === 'superadmin' ? 'super-admin' : needed} role` } }, 403);
     }
     c.set('user', user);
+    c.set('role', role);
     await next();
   });
   app.route('/api', apiRoutes(deps));
@@ -91,6 +100,9 @@ export function createApp(deps: AppDeps): Hono<AppEnv> {
   app.onError((err, c) => {
     if (err instanceof DdeployError) {
       return c.json({ error: { code: err.code, message: err.message } }, statusFor[err.code] ?? 502);
+    }
+    if (err instanceof AccessError) {
+      return c.json({ error: { code: 'conflict', message: err.message } }, 409);
     }
     if (err instanceof HTTPException) {
       return c.json({ error: { code: 'http_error', message: err.message } }, err.status);

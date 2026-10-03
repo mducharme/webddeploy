@@ -6,6 +6,7 @@ import { Trigger } from '../components/RunTable.tsx';
 import { Badge, Button, Card, ConfirmButton, Empty, ErrorBox, Mono, Spinner, Td, Th } from '../components/ui.tsx';
 import { backupDownloadUrl, useBackupNow, useBackupRestoreDb, useBackupRestoreUploads, useBackups, useManageBackup } from '../lib/api.ts';
 import { bytes, cronLabel, dateTime, relativeTime } from '../lib/format.ts';
+import { useCan } from '../lib/role.tsx';
 
 export function LastBackup({ event, never = 'never' }: { event: DdeployEvent | null | undefined; never?: string }) {
   if (!event) return <span className="text-stone-400">{never}</span>;
@@ -98,11 +99,12 @@ function StatusCard(props: {
 }) {
   const now = useBackupNow(props.server);
   const navigate = useNavigate();
+  const canAct = useCan('admin');
   return (
     <Card
       title={<span className="flex items-center gap-2">{props.icon} {props.title}</span>}
       actions={
-        props.enabled ? (
+        props.enabled && canAct ? (
           <Button
             busy={now.isPending}
             onClick={() =>
@@ -135,6 +137,7 @@ function Dumps({ server, name, b }: { server: string; name: string; b: BackupsRe
   const restore = useBackupRestoreDb(server);
   const manage = useManageBackup(server, name);
   const navigate = useNavigate();
+  const canAct = useCan('admin');
   const go = ({ run_id }: { run_id: string }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } });
   return (
     <Card title={`Database dumps (${b.database.dumps.length})`}>
@@ -149,7 +152,7 @@ function Dumps({ server, name, b }: { server: string; name: string; b: BackupsRe
         <div className="overflow-x-auto">
           <table className="w-full min-w-[44rem]">
             <thead className="border-b border-stone-200 dark:border-stone-800">
-              <tr><Th>Taken</Th><Th>Size</Th><Th /><Th className="text-right">Actions</Th></tr>
+              <tr><Th>Taken</Th><Th>Size</Th><Th /><Th className="text-right">{canAct ? 'Actions' : ''}</Th></tr>
             </thead>
             <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
               {b.database.dumps.map((d) => (
@@ -161,7 +164,7 @@ function Dumps({ server, name, b }: { server: string; name: string; b: BackupsRe
                   <Td className="tabular-nums">{bytes(d.bytes)}</Td>
                   <Td>{d.kept && <Badge tone="ok"><Pin className="size-3" aria-hidden /> kept</Badge>}</Td>
                   <Td className="text-right">
-                    <span className="inline-flex flex-wrap justify-end gap-1">
+                    {canAct && <span className="inline-flex flex-wrap justify-end gap-1">
                       <a href={backupDownloadUrl(server, name, d.file)} download>
                         <Button variant="ghost" title="Download"><Download className="size-4" aria-hidden /><span className="sr-only">Download {d.file}</span></Button>
                       </a>
@@ -176,7 +179,7 @@ function Dumps({ server, name, b }: { server: string; name: string; b: BackupsRe
                       </Button>
                       <ConfirmButton label="Restore" confirmLabel="Replace the database with this" onConfirm={() => restore.mutate({ site: name, body: { file: d.file } }, { onSuccess: go })} />
                       <ConfirmButton label="Delete" confirmLabel="Delete this dump" icon={<Trash2 className="size-4" aria-hidden />} onConfirm={() => manage.mutate({ action: 'delete', file: d.file })} />
-                    </span>
+                    </span>}
                   </Td>
                 </tr>
               ))}
@@ -191,6 +194,7 @@ function Dumps({ server, name, b }: { server: string; name: string; b: BackupsRe
 function Files({ server, name, b }: { server: string; name: string; b: BackupsResponse }) {
   const restore = useBackupRestoreUploads(server);
   const [shown, setShown] = useState(8);
+  const canAct = useCan('admin');
   const navigate = useNavigate();
   const go = ({ run_id }: { run_id: string }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } });
   return (
@@ -205,12 +209,12 @@ function Files({ server, name, b }: { server: string; name: string; b: BackupsRe
         {b.uploads.mirror.map((m) => (
           <div key={m.dir} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
             <span><Mono>{m.dir}</Mono> <span className="text-stone-500">— backup: {m.files ?? '?'} file(s), {bytes(m.bytes)}</span></span>
-            <ConfirmButton
+            {canAct && <ConfirmButton
               label="Restore folder"
               confirmLabel={`Replace ${m.dir} with the backup`}
               disabled={!m.files}
               onConfirm={() => restore.mutate({ site: name, body: { dir: m.dir } }, { onSuccess: go })}
-            />
+            />}
           </div>
         ))}
       </div>
@@ -231,7 +235,7 @@ function Files({ server, name, b }: { server: string; name: string; b: BackupsRe
                 </Td>
                 <Td className="text-right">
                   <span className="inline-flex flex-wrap justify-end gap-2">
-                    {v.dirs.map((d) => (
+                    {canAct && v.dirs.map((d) => (
                       <ConfirmButton key={d} label={d} confirmLabel={`Bring back ${d} files`} onConfirm={() => restore.mutate({ site: name, body: { dir: d, version: v.id } }, { onSuccess: go })} />
                     ))}
                   </span>

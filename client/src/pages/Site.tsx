@@ -13,6 +13,7 @@ import { HistoryTab } from './HistoryTab.tsx';
 import { OverviewTab } from './OverviewTab.tsx';
 import { SettingsTab } from './SettingsTab.tsx';
 import { DeployNowButton } from './siteShared.tsx';
+import { useCan } from '../lib/role.tsx';
 import { PreviewActions, PreviewsTab } from './PreviewsTab.tsx';
 import { Badge, Button, Card, Empty, ErrorBox, Mono, Spinner, StatusDot, Tabs } from '../components/ui.tsx';
 import { logStreamUrl, useDoctor, useLogs, useSite } from '../lib/api.ts';
@@ -27,12 +28,16 @@ export function SitePage() {
   const { tab } = useSearch({ from: '/s/$server/sites/$name' });
   const navigate = useNavigate({ from: '/s/$server/sites/$name' });
   const site = useSite(server, name);
+  const isAdmin = useCan('admin');
 
   if (site.isPending) return <Spinner label={`Reading ${name}…`} />;
   if (site.error) return <ErrorBox error={site.error} title={`Couldn't load ${name}`} />;
   const d = site.data;
   const s = d.site;
-  const tabs = SITE_TABS.filter((t) => !(t === 'previews' && s.preview)).map((id) => ({ id, label: id[0]!.toUpperCase() + id.slice(1) }));
+  // Viewers: no environment (secrets) or database (data) tabs.
+  const ADMIN_TABS: readonly SiteTab[] = ['environment', 'database'];
+  const tabs = SITE_TABS.filter((t) => !(t === 'previews' && s.preview) && (isAdmin || !ADMIN_TABS.includes(t))).map((id) => ({ id, label: id[0]!.toUpperCase() + id.slice(1) }));
+  const current: SiteTab = tabs.some((t) => t.id === tab) ? tab : 'overview';
 
   return (
     <div className="space-y-4">
@@ -59,19 +64,19 @@ export function SitePage() {
         {s.preview && <PreviewActions server={server} project={s.preview.project} branch={s.preview.branch} mode={s.preview.mode} />}
       </div>
 
-      <Tabs tabs={tabs} value={tab} onChange={(t) => void navigate({ search: { tab: t }, replace: true })} />
+      <Tabs tabs={tabs} value={current} onChange={(t) => void navigate({ search: { tab: t }, replace: true })} />
 
-      {tab === 'overview' && <OverviewTab server={server} detail={d} />}
-      {tab === 'history' && <HistoryTab server={server} detail={d} />}
-      {tab === 'environment' && <EnvTab server={server} name={name} isPreview={!!s.preview} />}
-      {tab === 'settings' && <SettingsTab server={server} detail={d} />}
-      {tab === 'database' && <DatabaseTab server={server} name={name} />}
-      {tab === 'files' && <FilesTab server={server} name={name} />}
-      {tab === 'backups' && <BackupsTab server={server} name={name} />}
-      {tab === 'previews' && <PreviewsTab server={server} project={name} repo={s.repo} />}
-      {tab === 'logs' && <SiteLog server={server} name={name} />}
-      {tab === 'health' && <HealthTab server={server} name={name} />}
-      {tab === 'config' && <ConfigTab detail={d} />}
+      {current === 'overview' && <OverviewTab server={server} detail={d} />}
+      {current === 'history' && <HistoryTab server={server} detail={d} />}
+      {current === 'environment' && <EnvTab server={server} name={name} isPreview={!!s.preview} />}
+      {current === 'settings' && <SettingsTab server={server} detail={d} />}
+      {current === 'database' && <DatabaseTab server={server} name={name} />}
+      {current === 'files' && <FilesTab server={server} name={name} />}
+      {current === 'backups' && <BackupsTab server={server} name={name} />}
+      {current === 'previews' && <PreviewsTab server={server} project={name} repo={s.repo} />}
+      {current === 'logs' && <SiteLog server={server} name={name} />}
+      {current === 'health' && <HealthTab server={server} name={name} />}
+      {current === 'config' && <ConfigTab detail={d} />}
     </div>
   );
 }

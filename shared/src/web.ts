@@ -8,12 +8,47 @@ export interface ServerRef {
   name: string;
 }
 
+export const ROLES = ['viewer', 'admin', 'superadmin'] as const;
+export type Role = (typeof ROLES)[number];
+
+export const ROLE_LABELS: Record<Role, string> = { viewer: 'Viewer', admin: 'Admin', superadmin: 'Super-admin' };
+
+export function roleAtLeast(role: Role | null | undefined, needed: Role): boolean {
+  if (!role) return false;
+  return ROLES.indexOf(role) >= ROLES.indexOf(needed);
+}
+
 export interface Me {
   email: string;
   name: string | null;
   picture: string | null;
+  role: Role;
   servers: ServerRef[];
 }
+
+export interface UserEntry {
+  email: string;
+  role: Role;
+  /** config: from the env file (fixed here); ui: added by a super-admin. */
+  source: 'config' | 'ui';
+  added_by: string | null;
+  added_at: string | null;
+  last_seen_at: string | null;
+}
+
+export interface GlobalOptions {
+  /** viewer: anyone signed in from an allowed Workspace domain can look; none: only listed users. */
+  domain_default_role: 'none' | 'viewer';
+  /** GOOGLE_ALLOWED_DOMAINS, for display (read-only). */
+  allowed_domains?: string[];
+}
+
+export const userRequest = z.object({
+  email: z.string().trim().toLowerCase().email().max(200),
+  role: z.enum(ROLES),
+});
+
+export const optionsRequest = z.object({ domain_default_role: z.enum(['none', 'viewer']).optional() });
 
 export interface AuditEntry {
   id: number;

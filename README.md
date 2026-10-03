@@ -178,7 +178,7 @@ On the ddeploy server:
    ```
    sudo git clone <this repo> /opt/webddeploy
    sudo /opt/webddeploy/deploy/install.sh
-   sudoedit /etc/webddeploy/env          # PUBLIC_URL, GOOGLE_*, ADMIN_EMAILS
+   sudoedit /etc/webddeploy/env          # PUBLIC_URL, GOOGLE_*, SUPERADMIN_EMAILS
    sudo systemctl restart webddeploy
    ```
    The installer finds Node 22.18+ on `PATH` or in ddeploy's `/opt/nvm`,
@@ -188,17 +188,41 @@ On the ddeploy server:
 
 To upgrade: `sudo git -C /opt/webddeploy pull && sudo /opt/webddeploy/deploy/install.sh`.
 
-### Who can sign in
+### Who can sign in, and roles
 
 A user needs all three of the following:
 - A verified Google account.
 - Membership in a domain listed in `GOOGLE_ALLOWED_DOMAINS`, checked
   against the ID token's `hd` claim. Leaving the list empty skips this check.
-- An email address listed in `ADMIN_EMAILS`. In v1, everyone on the list is
-  an admin.
+- A role.
 
-Removing an email from `ADMIN_EMAILS` and restarting the service revokes
-that user's existing sessions too.
+| Role | Can |
+|---|---|
+| Viewer | Look: sites, history, run output, logs, health, previews, backups, files (folder list). No environment or database tab, no downloads. |
+| Admin | Every site action: deploy, rollback, provision, previews, environment, settings, database, files, backups, downloads. The Activity log. |
+| Super-admin | Admin, plus **Admin › Server settings** (ddeploy's `provisioner.conf`), **Admin › Users** and global options. |
+
+Roles come from, highest first:
+1. `SUPERADMIN_EMAILS`, `ADMIN_EMAILS`, `VIEWER_EMAILS` in the env file.
+   These are fixed: the UI can't change or remove them, so nobody can lock
+   everyone out.
+2. Users a super-admin adds on the Users page.
+3. The global option "anyone in the allowed Workspace domain can view"
+   (off by default), which makes every `GOOGLE_ALLOWED_DOMAINS` account a
+   viewer.
+
+The server checks the role on every request (`server/src/access.ts`,
+`requiredRole`); the UI only hides what a role can't use. Role changes and
+removals take effect on the next request, without signing anyone out.
+Users and option changes are recorded in the Activity log.
+
+Server settings go through `ddeploy api config set`, which validates every
+value, backs up `provisioner.conf` first, and restores it if the new file
+doesn't load. Only an allowlist of keys can change; paths, hostnames,
+database and storage credentials stay CLI-only and show as read-only.
+
+In development, `/auth/dev-login?as=someone@example.com` signs in as another
+user, to try roles out (they still need a role).
 
 ## Several servers
 

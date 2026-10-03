@@ -96,10 +96,13 @@ export class GoogleOidc implements OidcProvider {
   }
 }
 
-/** Why an identity may not sign in, or null if it may. */
-export function rejectReason(id: Identity, adminEmails: readonly string[], allowedDomains: readonly string[]): string | null {
+/**
+ * Why an identity may not sign in, or null if it may. `hasRole`: whether
+ * it has any role at all (see Access.roleFor).
+ */
+export function rejectReason(id: Identity, allowedDomains: readonly string[], hasRole: boolean): string | null {
   if (!id.emailVerified) return 'email address not verified with Google';
   if (allowedDomains.length && (!id.hd || !allowedDomains.includes(id.hd))) return `${id.email} is not in an allowed Google Workspace domain`;
-  if (!adminEmails.includes(id.email)) return `${id.email} is not on the admin list`;
+  if (!hasRole) return `${id.email} hasn't been given access — ask a super-admin to add you`;
   return null;
 }

@@ -34,8 +34,15 @@ const envSchema = z.object({
   GOOGLE_CLIENT_SECRET: z.string().default(''),
   /** Google Workspace domains (the ID token's `hd` claim) allowed to sign in. Empty: any, subject to ADMIN_EMAILS. */
   GOOGLE_ALLOWED_DOMAINS: csv,
-  /** Who may use the UI at all. Everyone here is an admin in v1. */
+  /**
+   * Roles from configuration (can't be changed from the UI, so nobody can
+   * lock everyone out). More users, of any role, are added by super-admins
+   * in the UI. superadmin: also server settings, users, global options;
+   * admin: every site action; viewer: read-only.
+   */
+  SUPERADMIN_EMAILS: csv,
   ADMIN_EMAILS: csv,
+  VIEWER_EMAILS: csv,
   /** Development only: /auth/dev-login signs in as this email, no Google round trip. */
   DEV_LOGIN_EMAIL: z.string().default(''),
 
@@ -68,7 +75,9 @@ export interface Config {
   staticDir: string;
   google: { clientId: string; clientSecret: string } | null;
   allowedDomains: string[];
+  superadminEmails: string[];
   adminEmails: string[];
+  viewerEmails: string[];
   devLoginEmail: string | null;
   servers: ServerEntry[];
   sessionIdleMs: number;
@@ -97,7 +106,9 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
   const devLoginEmail = e.DEV_LOGIN_EMAIL.trim().toLowerCase() || null;
   if (production && devLoginEmail) problems.push('DEV_LOGIN_EMAIL must not be set in production');
   if (!google && !devLoginEmail) problems.push('set GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET (or DEV_LOGIN_EMAIL in development)');
-  if (e.ADMIN_EMAILS.length === 0 && !devLoginEmail) problems.push('ADMIN_EMAILS is empty: nobody could sign in');
+  if (e.SUPERADMIN_EMAILS.length === 0 && e.ADMIN_EMAILS.length === 0 && !devLoginEmail) {
+    problems.push('SUPERADMIN_EMAILS and ADMIN_EMAILS are both empty: nobody could sign in to manage anything');
+  }
   const publicUrl = new URL(e.PUBLIC_URL);
   if (production && publicUrl.protocol !== 'https:') problems.push('PUBLIC_URL must be https:// in production');
 
@@ -123,7 +134,10 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     staticDir: e.STATIC_DIR,
     google,
     allowedDomains: e.GOOGLE_ALLOWED_DOMAINS,
-    adminEmails: devLoginEmail && !e.ADMIN_EMAILS.includes(devLoginEmail) ? [...e.ADMIN_EMAILS, devLoginEmail] : e.ADMIN_EMAILS,
+    // The development sign-in is a super-admin.
+    superadminEmails: devLoginEmail && !e.SUPERADMIN_EMAILS.includes(devLoginEmail) ? [...e.SUPERADMIN_EMAILS, devLoginEmail] : e.SUPERADMIN_EMAILS,
+    adminEmails: e.ADMIN_EMAILS,
+    viewerEmails: e.VIEWER_EMAILS,
     devLoginEmail,
     servers,
     sessionIdleMs: e.SESSION_IDLE_HOURS * 3600_000,

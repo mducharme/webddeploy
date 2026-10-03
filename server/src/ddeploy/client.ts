@@ -24,6 +24,7 @@ import {
   uploadsResponse,
   backupsResponse,
   previewCreateFlags,
+  serverConfigResponse,
   type PreviewCreateRequest,
   type ProvisionRequestParsed,
 } from '@webddeploy/shared';
@@ -249,6 +250,16 @@ export class DdeployClient {
 
   backupDownload(site: string, file: string): Promise<RawStream> {
     return this.connector.stream(['backups', 'download', site, '--file', file]);
+  }
+
+  config() {
+    return this.call(serverConfigResponse, ['config']);
+  }
+
+  /** KEY=value lines on stdin (NOTIFY_WEBHOOK is a secret); ddeploy validates, backs up and applies. */
+  applyConfig(actor: string, set: Record<string, string>) {
+    const stdin = Object.entries(set).map(([k, v]) => `${k}=${v.trim()}\n`).join('');
+    return this.call(serverConfigResponse, ['config', 'set', '--actor', actor], { stdin, timeoutMs: 120_000 });
   }
 }
 

@@ -4,6 +4,8 @@ import { ErrorBox } from './components/ui.tsx';
 import { useMe } from './lib/api.ts';
 import { ActivityPage } from './pages/Activity.tsx';
 import { BackupsPage } from './pages/BackupsPage.tsx';
+import { ServerSettingsPage } from './pages/ServerSettingsPage.tsx';
+import { UsersPage } from './pages/UsersPage.tsx';
 import { Fleet } from './pages/Fleet.tsx';
 import { Root } from './pages/Layout.tsx';
 import { Logs } from './pages/Logs.tsx';
@@ -43,13 +45,16 @@ const logsRoute = createRoute({
   component: Logs,
 });
 const backupsRoute = createRoute({ getParentRoute: () => serverRoute, path: 'backups', component: BackupsPage });
+const serverSettingsRoute = createRoute({ getParentRoute: () => serverRoute, path: 'server-settings', component: ServerSettingsPage });
+const usersRoute = createRoute({ getParentRoute: () => rootRoute, path: 'admin/users', component: UsersPage });
 const provisionRoute = createRoute({ getParentRoute: () => serverRoute, path: 'provision', component: Provision });
 const activityRoute = createRoute({ getParentRoute: () => rootRoute, path: 'activity', component: ActivityPage });
 
 export const routeTree = rootRoute.addChildren([
   indexRoute,
-  serverRoute.addChildren([fleetRoute, siteRoute, runRoute, statusRoute, logsRoute, backupsRoute, provisionRoute]),
+  serverRoute.addChildren([fleetRoute, siteRoute, runRoute, statusRoute, logsRoute, backupsRoute, serverSettingsRoute, provisionRoute]),
   activityRoute,
+  usersRoute,
 ]);
 
 export const router = createRouter({ routeTree, defaultPreload: 'intent', scrollRestoration: true });

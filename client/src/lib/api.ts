@@ -5,6 +5,10 @@ import type {
   DbInfoResponse,
   UploadsResponse,
   BackupsResponse,
+  GlobalOptions,
+  Role,
+  ServerConfigResponse,
+  UserEntry,
   EnvChangeRequest,
   EnvEntry,
   SettingsRequest,
@@ -67,6 +71,9 @@ export const keys = {
   db: (s: string, n: string) => ['db', s, n] as const,
   uploads: (s: string, n: string) => ['uploads', s, n] as const,
   backups: (s: string, n: string) => ['backups', s, n] as const,
+  users: ['users'] as const,
+  options: ['options'] as const,
+  config: (s: string) => ['config', s] as const,
   branches: (s: string, n: string) => ['branches', s, n] as const,
   commits: (s: string, n: string, from: string, to: string) => ['commits', s, n, from, to] as const,
 };
@@ -265,6 +272,48 @@ export function useManageBackup(server: string, name: string) {
     mutationFn: ({ action, file }: { action: 'keep' | 'unkeep' | 'delete'; file: string }) =>
       api<{ file: string; action: string }>(`${base(server)}/sites/${name}/backups/${action}`, { method: 'POST', body: JSON.stringify({ file }) }),
     onSuccess: () => void qc.invalidateQueries({ queryKey: keys.backups(server, name) }),
+  });
+}
+
+export const useUsers = () => useQuery({ queryKey: keys.users, queryFn: () => api<{ users: UserEntry[] }>('/api/admin/users') });
+
+export function useSetUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (u: { email: string; role: Role }) => api<{ users: UserEntry[] }>('/api/admin/users', { method: 'PUT', body: JSON.stringify(u) }),
+    onSuccess: (r) => qc.setQueryData(keys.users, r),
+  });
+}
+
+export function useRemoveUser() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (email: string) => api<{ users: UserEntry[] }>(`/api/admin/users/${encodeURIComponent(email)}`, { method: 'DELETE' }),
+    onSuccess: (r) => qc.setQueryData(keys.users, r),
+  });
+}
+
+export const useOptions = () => useQuery({ queryKey: keys.options, queryFn: () => api<GlobalOptions>('/api/admin/options') });
+
+export function useSetOptions() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (o: Partial<GlobalOptions>) => api<GlobalOptions>('/api/admin/options', { method: 'PUT', body: JSON.stringify(o) }),
+    onSuccess: (r) => qc.setQueryData(keys.options, r),
+  });
+}
+
+export const useServerConfig = (server: string) =>
+  useQuery({ queryKey: keys.config(server), queryFn: () => api<ServerConfigResponse>(`${base(server)}/config`) });
+
+export function useSetServerConfig(server: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (set: Record<string, string>) => api<ServerConfigResponse>(`${base(server)}/config`, { method: 'PUT', body: JSON.stringify({ set }) }),
+    onSuccess: (r) => {
+      qc.setQueryData(keys.config(server), r);
+      void qc.invalidateQueries({ queryKey: keys.info(server) });
+    },
   });
 }
 

@@ -265,8 +265,8 @@ mtimes. That's a later optimization, not v1.
 
 ### Screens
 
-1. **Sign in:** a Google button. Unauthorized emails get a clear "not on
-   the admin list" page.
+1. **Sign in:** a Google button. Emails without a role get a clear "ask a
+   super-admin to add you" page.
 2. **Fleet** (home)
    - Server card: worst doctor status, disk, nearest certificate expiry,
      webhook, backup and prune status, ddeploy version.
@@ -449,3 +449,26 @@ webddeploy 81 shared + 87 server + 50 client.
 - **`api sites` cost on large fleets:** cache each row's parsed config,
   keyed on config file mtimes, if `sites` gets slow (0.15s for one site
   today).
+
+## Roles (2026-10-03)
+
+- **Viewer, admin, super-admin.** Viewers look (no secrets, no data
+  downloads, no Activity log); admins do every site action; super-admins
+  also edit server settings, users and global options.
+- **Where roles come from:** `SUPERADMIN_EMAILS` / `ADMIN_EMAILS` /
+  `VIEWER_EMAILS` (fixed, can't be changed from the UI: no lock-out), then
+  users added in the UI (`users` table), then the optional
+  "Workspace domain = viewer" global option (`options` table). Resolved on
+  every request (`Access.roleFor`), so changes apply at once.
+- **Enforcement:** one middleware, `requiredRole(method, path)` in
+  `server/src/access.ts`: `/api/admin/*` and `/servers/:id/config` need
+  super-admin; any write, and reads of secrets or data (env, db, dumps,
+  downloads, activity, provision inspection), need admin; the rest viewer.
+  The authorization matrix is a test (`server/test/roles.test.ts`).
+- **Server settings:** `ddeploy api config` / `config set` (stdin
+  `KEY=value`), an allowlist with per-key validators, a backup of
+  `provisioner.conf`, a reload check that restores the backup, and cron or
+  web-vhost re-rendering when the key needs it. `shared/src/serverSettings.ts`
+  describes the same keys for the form; a test fails if the two drift.
+- **Later:** per-site roles (an admin of some sites only) would fit
+  `requiredRole` by adding the site to the lookup; not needed yet.

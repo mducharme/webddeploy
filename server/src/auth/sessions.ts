@@ -8,6 +8,8 @@ export interface Session {
   email: string;
   name: string | null;
   picture: string | null;
+  /** Google Workspace domain the user signed in from, if any. */
+  hd: string | null;
   createdAt: number;
 }
 
@@ -26,12 +28,12 @@ export class SessionStore {
     this.now = opts.now ?? Date.now;
   }
 
-  create(user: { email: string; name: string | null; picture: string | null }): string {
+  create(user: { email: string; name: string | null; picture: string | null; hd?: string | null }): string {
     const token = randomToken();
     const now = this.now();
     this.db
-      .prepare('INSERT INTO sessions (id_hash, email, name, picture, created_at, last_seen_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?)')
-      .run(hash(token), user.email, user.name, user.picture, now, now, now + this.maxMs);
+      .prepare('INSERT INTO sessions (id_hash, email, name, picture, hd, created_at, last_seen_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+      .run(hash(token), user.email, user.name, user.picture, user.hd ?? null, now, now, now + this.maxMs);
     return token;
   }
 
@@ -39,7 +41,7 @@ export class SessionStore {
     if (!token) return null;
     const id = hash(token);
     const row = this.db.prepare('SELECT * FROM sessions WHERE id_hash = ?').get(id) as
-      | { email: string; name: string | null; picture: string | null; created_at: number; last_seen_at: number; expires_at: number }
+      | { email: string; name: string | null; picture: string | null; hd: string | null; created_at: number; last_seen_at: number; expires_at: number }
       | undefined;
     if (!row) return null;
     const now = this.now();
@@ -49,7 +51,7 @@ export class SessionStore {
     }
     // Touch at most once a minute: every API call reads the session.
     if (now - row.last_seen_at > 60_000) this.db.prepare('UPDATE sessions SET last_seen_at = ? WHERE id_hash = ?').run(now, id);
-    return { email: row.email, name: row.name, picture: row.picture, createdAt: row.created_at };
+    return { email: row.email, name: row.name, picture: row.picture, hd: row.hd, createdAt: row.created_at };
   }
 
   destroy(token: string | undefined): void {

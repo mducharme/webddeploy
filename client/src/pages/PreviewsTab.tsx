@@ -7,6 +7,7 @@ import { Commit, RunTable } from '../components/RunTable.tsx';
 import { Badge, Button, Card, ConfirmButton, Empty, ErrorBox, Field, Spinner, Td, Th, inputClass } from '../components/ui.tsx';
 import { useBranches, useInfo, usePreviewRun, usePreviews } from '../lib/api.ts';
 import { relativeTime } from '../lib/format.ts';
+import { Can, useCan } from '../lib/role.tsx';
 
 const MODE_HELP = {
   shared: "Uses the project's database and uploads. Content entered in the preview is the project's content; migrations on the branch run against it.",
@@ -20,7 +21,7 @@ export function PreviewsTab({ server, project, repo }: { server: string; project
   const { active, history } = previews.data;
   return (
     <div className="space-y-4">
-      <NewPreview server={server} project={project} taken={active.map((p) => p.branch)} />
+      <Can role="admin"><NewPreview server={server} project={project} taken={active.map((p) => p.branch)} /></Can>
       <Card title={`Active previews (${active.length})`}>
         {active.length === 0 ? (
           <Empty>No previews. Create one above, or push to a branch matching the site's preview branches.</Empty>
@@ -144,6 +145,7 @@ export function PreviewActions({ server, project, branch, mode }: { server: stri
   const remove = usePreviewRun(server, 'remove');
   const navigate = useNavigate();
   const go = ({ run_id }: { run_id: string }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } });
+  if (!useCan('admin')) return null;
   return (
     <span className="inline-flex flex-col items-end gap-1">
       <span className="inline-flex flex-wrap justify-end gap-2">

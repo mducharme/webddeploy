@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Card, Field, Mono, cx, inputClass } from '../components/ui.tsx';
 import { useApplySettings, useBranches } from '../lib/api.ts';
 import { DeployNowButton } from './siteShared.tsx';
+import { useCan } from '../lib/role.tsx';
 
 type Value = string | string[];
 
@@ -39,6 +40,7 @@ export function SettingsTab({ server, detail }: { server: string; detail: SiteDe
   const [resets, setResets] = useState<Set<string>>(new Set());
   const [branch, setBranch] = useState<string | null | undefined>(undefined);
   const [saved, setSaved] = useState(false);
+  const canEdit = useCan('admin');
 
   useEffect(() => {
     setDrafts({});
@@ -68,6 +70,7 @@ export function SettingsTab({ server, detail }: { server: string; detail: SiteDe
 
   return (
     <div className="space-y-4">
+      {!canEdit && <p className="rounded-md bg-stone-100 p-3 text-sm text-stone-600 dark:bg-stone-800 dark:text-stone-300">Read-only: changing settings needs the admin role.</p>}
       <p className="text-sm text-stone-600 dark:text-stone-400">
         Changes are operator overrides on the server — they win over the repository's <Mono>.ddeploy/config.yaml</Mono> and{' '}
         <Mono>.ddev/config.yaml</Mono>, and apply on the next deploy.
@@ -76,7 +79,7 @@ export function SettingsTab({ server, detail }: { server: string; detail: SiteDe
         <Card title="Branch">
           <div className="grid gap-4 p-4 sm:grid-cols-2">
             <Field label="Deployed branch" hint="The next deploy switches to it.">
-              <select className={inputClass} value={tracked ?? ''} onChange={(e) => { setSaved(false); setBranch(e.target.value || null); }} aria-label="Deployed branch">
+              <select disabled={!canEdit} className={inputClass} value={tracked ?? ''} onChange={(e) => { setSaved(false); setBranch(e.target.value || null); }} aria-label="Deployed branch">
                 <option value="">repository default{branches.data?.default_branch ? ` (${branches.data.default_branch})` : ''}</option>
                 {(branches.data?.branches ?? (tracked ? [tracked] : [])).map((b) => <option key={b} value={b}>{b}</option>)}
               </select>
@@ -107,15 +110,15 @@ export function SettingsTab({ server, detail }: { server: string; detail: SiteDe
                 <div key={def.key} className="relative">
                   <Field label={label} hint={def.help} error={errors[def.key]}>
                     {def.kind === 'bool' ? (
-                      <select className={inputClass} value={value} onChange={(e) => set(e.target.value)} aria-label={def.label}>
+                      <select disabled={!canEdit} className={inputClass} value={value} onChange={(e) => set(e.target.value)} aria-label={def.label}>
                         <option value="true">on</option>
                         <option value="false">off</option>
                       </select>
                     ) : (
-                      <input className={cx(inputClass, def.kind === 'list' && 'font-mono')} value={value} placeholder={def.placeholder} onChange={(e) => set(e.target.value)} aria-label={def.label} />
+                      <input disabled={!canEdit} className={cx(inputClass, def.kind === 'list' && 'font-mono')} value={value} placeholder={def.placeholder} onChange={(e) => set(e.target.value)} aria-label={def.label} />
                     )}
                   </Field>
-                  {overridden && (
+                  {overridden && canEdit && (
                     <button
                       type="button"
                       className="absolute right-0 top-0 inline-flex items-center gap-1 text-xs text-stone-500 hover:text-teal-700"

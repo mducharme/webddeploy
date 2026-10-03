@@ -5,6 +5,7 @@ import { Button, Card, Empty, ErrorBox, Mono, Spinner, Td, Th, cx } from '../com
 import { useBackupNow, useInfo, useSites } from '../lib/api.ts';
 import { cronLabel } from '../lib/format.ts';
 import { LastBackup } from './BackupsTab.tsx';
+import { useCan } from '../lib/role.tsx';
 
 /** What every site's backups did lately; back one up now. */
 export function BackupsPage() {
@@ -75,6 +76,7 @@ export function BackupsPage() {
 function Row({ server, site, dbOn, filesOn }: { server: string; site: SiteSummary; dbOn: boolean; filesOn: boolean }) {
   const now = useBackupNow(server);
   const navigate = useNavigate();
+  const canAct = useCan('admin');
   const failed = site.last_backups?.database?.phase === 'failed' || site.last_backups?.uploads?.phase === 'failed';
   const busy = (what: string) => now.isPending && (now.variables?.body as { what?: string } | undefined)?.what === what;
   const run = (what: 'database' | 'uploads') =>
@@ -88,8 +90,8 @@ function Row({ server, site, dbOn, filesOn }: { server: string; site: SiteSummar
       <Td>{filesOn ? <LastBackup event={site.last_backups?.uploads} /> : <span className="text-stone-400">off</span>}</Td>
       <Td className="text-right">
         <span className="inline-flex gap-2">
-          {dbOn && <Button busy={busy('database')} onClick={() => run('database')}><Archive className="size-4" aria-hidden /> Database</Button>}
-          {filesOn && <Button busy={busy('uploads')} onClick={() => run('uploads')}><Archive className="size-4" aria-hidden /> Files</Button>}
+          {canAct && dbOn && <Button busy={busy('database')} onClick={() => run('database')}><Archive className="size-4" aria-hidden /> Database</Button>}
+          {canAct && filesOn && <Button busy={busy('uploads')} onClick={() => run('uploads')}><Archive className="size-4" aria-hidden /> Files</Button>}
         </span>
         {now.error && <p className="mt-1 text-xs text-red-700">{now.error.message}</p>}
       </Td>

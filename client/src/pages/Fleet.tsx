@@ -7,6 +7,7 @@ import { Badge, Card, ConfirmButton, Empty, ErrorBox, PhaseBadge, Spinner, Statu
 import { dateTime, kindLabel, relativeTime, shortSha } from '../lib/format.ts';
 import { useDeploy, useDoctor, useInfo, useRecentRuns, useSites } from '../lib/api.ts';
 import { RunTable } from '../components/RunTable.tsx';
+import { useCan } from '../lib/role.tsx';
 
 /** The newest run, config changes aside (older ddeploy: the newest event). */
 const lastRun = (s: SiteSummary) => (s.last_run !== undefined ? s.last_run : s.last_event);
@@ -132,6 +133,7 @@ export function Fleet() {
 function SiteRow({ server, site, previews, nested, status }: { server: string; site: SiteSummary; previews: number; nested: boolean; status: CheckStatus | 'pending' }) {
   const deploy = useDeploy(server);
   const navigate = useNavigate();
+  const canDeploy = useCan('admin');
   const ev = lastRun(site);
   const phase = ev ? (ev.phase === 'started' ? 'running' : ev.phase) : null;
   const deployedAt = site.deployed_at ?? site.last_deploy?.ts ?? null;
@@ -193,7 +195,7 @@ function SiteRow({ server, site, previews, nested, status }: { server: string; s
         {site.node && <> · Node {site.node}{site.build && ' (build)'}</>}
       </Td>
       <Td className="text-right">
-        {!site.preview && (
+        {!site.preview && canDeploy && (
           <ConfirmButton
             label="Deploy"
             confirmLabel={`Deploy ${site.name}`}

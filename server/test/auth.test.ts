@@ -76,7 +76,7 @@ describe('Google sign-in', () => {
     const res = await signIn(app);
     expect(res.status).toBe(403);
     expect(res.headers.get('set-cookie')).toBeNull();
-    expect(await res.text()).toContain('not on the admin list');
+    expect(await res.text()).toContain('been given access');
   });
 
   it('refuses a token with the wrong nonce', async () => {
@@ -123,11 +123,11 @@ describe('Google sign-in', () => {
 
 describe('rejectReason', () => {
   const id = (o: Partial<Identity>): Identity => ({ email: ADMIN, emailVerified: true, name: null, picture: null, hd: 'example.com', ...o });
-  it('admin in the allowed domain', () => expect(rejectReason(id({}), [ADMIN], ['example.com'])).toBeNull());
-  it('unverified email', () => expect(rejectReason(id({ emailVerified: false }), [ADMIN], [])).toContain('not verified'));
-  it('wrong Workspace domain', () => expect(rejectReason(id({ hd: 'other.com' }), [ADMIN], ['example.com'])).toContain('domain'));
-  it('consumer account when a domain is required', () => expect(rejectReason(id({ hd: null }), [ADMIN], ['example.com'])).toContain('domain'));
-  it('no domain restriction', () => expect(rejectReason(id({ hd: null }), [ADMIN], [])).toBeNull());
+  it('someone with a role, in the allowed domain', () => expect(rejectReason(id({}), ['example.com'], true)).toBeNull());
+  it('unverified email', () => expect(rejectReason(id({ emailVerified: false }), [], true)).toContain('not verified'));
+  it('wrong Workspace domain', () => expect(rejectReason(id({ hd: 'other.com' }), ['example.com'], true)).toContain('domain'));
+  it('consumer account when a domain is required', () => expect(rejectReason(id({ hd: null }), ['example.com'], true)).toContain('domain'));
+  it('no role', () => expect(rejectReason(id({}), [], false)).toContain("hasn't been given access"));
 });
 
 describe('safeReturnTo', () => {

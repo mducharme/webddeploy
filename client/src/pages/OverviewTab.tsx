@@ -9,6 +9,7 @@ import { useDbInfo, useDoctor, useEnv, useInfo, useSiteRuns, useUploads } from '
 import { duration, kindLabel, relativeTime } from '../lib/format.ts';
 import type { SiteTab } from './Site.tsx';
 import { RollbackButton } from './siteShared.tsx';
+import { useCan } from '../lib/role.tsx';
 
 const isCodeRun = (r: Run) => ['deploy', 'rollback', 'provision'].includes(r.kind);
 
@@ -22,10 +23,11 @@ export function OverviewTab({ server, detail }: { server: string; detail: SiteDe
   const codeRuns = runs.data?.runs.filter(isCodeRun) ?? [];
   const last = runs.data?.runs.find((r) => !CHANGE_KINDS.has(r.kind));
   const lastGood = codeRuns.find((r) => r.phase === 'succeeded' && r.to_sha && r.to_sha !== detail.site.sha);
+  const isAdmin = useCan('admin');
 
   return (
     <div className="space-y-4">
-      {runs.data && runs.data.runs.length <= 4 && !detail.site.preview && <NextSteps server={server} detail={detail} />}
+      {isAdmin && runs.data && runs.data.runs.length <= 4 && !detail.site.preview && <NextSteps server={server} detail={detail} />}
       <div className="grid gap-4 lg:grid-cols-3">
         <Card className="p-4">
           <p className="text-xs uppercase tracking-wide text-stone-500">Health</p>
@@ -72,7 +74,7 @@ export function OverviewTab({ server, detail }: { server: string; detail: SiteDe
         </Card>
       </div>
 
-      {last?.phase === 'failed' && isCodeRun(last) && lastGood?.to_sha && (
+      {isAdmin && last?.phase === 'failed' && isCodeRun(last) && lastGood?.to_sha && (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
           <span>
             The last {kindLabel(last.kind).toLowerCase()} failed{last.kind === 'deploy' ? ' — the previous release is still live' : ''}. Fix the

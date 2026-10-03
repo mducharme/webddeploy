@@ -1,5 +1,6 @@
 import { serve } from '@hono/node-server';
 import { createApp } from './app.ts';
+import { Access } from './access.ts';
 import { AuditLog } from './audit.ts';
 import { GoogleOidc } from './auth/google.ts';
 import { SessionStore } from './auth/sessions.ts';
@@ -28,6 +29,7 @@ const app = createApp({
   oidc,
   sessions,
   audit: new AuditLog(db),
+  access: new Access(db, config),
 });
 
 sessions.sweep();

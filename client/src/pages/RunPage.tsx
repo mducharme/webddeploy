@@ -9,6 +9,7 @@ import { Card, ConfirmButton, ErrorBox, Mono, PhaseBadge, Spinner } from '../com
 import { keys, runStreamUrl, useCancelRun, useCommits, useRun, useSite } from '../lib/api.ts';
 import { commitUrl, duration, kindLabel, relativeTime, shortSha } from '../lib/format.ts';
 import { useOutputStream } from '../lib/stream.ts';
+import { useCan } from '../lib/role.tsx';
 import { DeployNowButton, RollbackButton } from './siteShared.tsx';
 
 export function RunPage() {
@@ -21,6 +22,7 @@ export function RunPage() {
   const site = run?.site ?? initial.data?.meta?.site ?? '';
   const detail = useSite(server, site);
   const commits = useCommits(server, site, run?.from_sha ?? null, run?.to_sha ?? null);
+  const canAct = useCan('admin');
 
   useEffect(() => {
     if (stream.ended && run) {
@@ -47,7 +49,7 @@ export function RunPage() {
   const repo = detail.data?.site.repo;
   const live = detail.data?.site.sha;
   const codeRun = ['deploy', 'rollback'].includes(run.kind);
-  const cancellable = !!initial.data?.meta && !isTerminal(run.phase);
+  const cancellable = !!initial.data?.meta && !isTerminal(run.phase) && canAct;
 
   return (
     <div className="space-y-4">
