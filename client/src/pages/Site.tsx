@@ -1,7 +1,7 @@
 import { useNavigate, useParams, useSearch } from '@tanstack/react-router';
 import type { SiteDetailResponse } from '@webddeploy/shared';
 import { ExternalLink } from 'lucide-react';
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Checks } from '../components/Checks.tsx';
 import { LogView } from '../components/LogView.tsx';
 import { Commit, RunTable } from '../components/RunTable.tsx';
@@ -11,8 +11,8 @@ import { HistoryTab } from './HistoryTab.tsx';
 import { OverviewTab } from './OverviewTab.tsx';
 import { SettingsTab } from './SettingsTab.tsx';
 import { DeployNowButton } from './siteShared.tsx';
-import { Badge, Card, Empty, ErrorBox, Mono, Spinner, StatusDot, Tabs, Td, Th } from '../components/ui.tsx';
-import { logStreamUrl, useDoctor, usePreviews, useSite } from '../lib/api.ts';
+import { Badge, Button, Card, Empty, ErrorBox, Mono, Spinner, StatusDot, Tabs, Td, Th } from '../components/ui.tsx';
+import { logStreamUrl, useDoctor, useLogs, usePreviews, useSite } from '../lib/api.ts';
 import { relativeTime } from '../lib/format.ts';
 import { useOutputStream } from '../lib/stream.ts';
 
@@ -111,16 +111,51 @@ function PreviewsTab({ server, name }: { server: string; name: string }) {
   );
 }
 
-export function SiteLog({ server, name }: { server: string; name: string }) {
+/** Follows one log live. */
+export function LogStream({ server, name, title }: { server: string; name: string; title?: ReactNode }) {
   const stream = useOutputStream(logStreamUrl(server, name));
   return (
     <Card
-      title={<>Log: <Mono>{name}</Mono></>}
+      title={title ?? <>Log: <Mono>{name}</Mono></>}
       actions={<span className="flex items-center gap-1.5 text-xs text-stone-500"><StatusDot status={stream.connected ? 'ok' : 'off'} />{stream.connected ? 'following' : 'disconnected'}</span>}
     >
       {stream.error && <ErrorBox error={stream.error} />}
       <LogView text={stream.text} placeholder="Waiting for the log…" className="rounded-b-lg" />
     </Card>
+  );
+}
+
+const SITE_LOGS = [
+  { suffix: '', label: 'Deploys & previews', help: "ddeploy's own log for this site" },
+  { suffix: '.error', label: 'Errors (nginx + PHP)', help: 'nginx errors, and PHP errors and warnings PHP-FPM reports' },
+  { suffix: '.access', label: 'Access', help: 'every request nginx served for this site' },
+] as const;
+
+/** A site's three logs, one at a time. */
+export function SiteLog({ server, name }: { server: string; name: string }) {
+  const [which, setWhich] = useState<(typeof SITE_LOGS)[number]['suffix']>('');
+  const logs = useLogs(server);
+  const logName = name + which;
+  const exists = logs.data ? logs.data.logs.some((l) => l.name === logName) : true;
+  const current = SITE_LOGS.find((l) => l.suffix === which)!;
+  return (
+    <div className="space-y-3">
+      <div role="group" aria-label="Which log" className="flex flex-wrap items-center gap-2">
+        {SITE_LOGS.map((l) => (
+          <Button key={l.suffix} variant={which === l.suffix ? 'primary' : 'secondary'} onClick={() => setWhich(l.suffix)} title={l.help}>
+            {l.label}
+          </Button>
+        ))}
+      </div>
+      {exists ? (
+        <LogStream key={logName} server={server} name={logName} title={<>{current.label} <span className="font-normal text-stone-500">— {current.help}</span></>} />
+      ) : (
+        <Card className="p-4 text-sm text-stone-600 dark:text-stone-400">
+          This site doesn't have its own nginx logs yet: they're set up on its next deploy (ddeploy writes them per site from this version on).
+          Until then, its requests and PHP errors are in the server-wide nginx logs on the Logs page.
+        </Card>
+      )}
+    </div>
   );
 }
 

@@ -18,7 +18,7 @@ describe('environment', () => {
   it('reveals one value on request, and audits it', async () => {
     const { req, audit } = makeApp();
     const res = await req(`${site}/env/reveal`, { method: 'POST', body: JSON.stringify({ key: 'MAIL_PASSWORD' }) });
-    expect(await json(res)).toEqual({ key: 'MAIL_PASSWORD', value: 'hunter2' });
+    expect(await json(res)).toEqual({ key: 'MAIL_PASSWORD', value: 'fixture-mail-password' });
     expect(audit.list()[0]).toMatchObject({ action: 'env.reveal', target: 'testsite', detail: { key: 'MAIL_PASSWORD' } });
   });
 

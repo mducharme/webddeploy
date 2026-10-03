@@ -6,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import type { z } from 'zod';
 import {
   apiErrorResponse,
+  patterns,
   branchesResponse,
   commitsResponse,
   dbCredentialsResponse,
@@ -40,6 +41,7 @@ const cases: Array<[string, z.ZodType]> = [
   ['inspect-unreachable', inspectRepoResponse],
   ['run-show', runShowResponse],
   ['run-log', logChunk],
+  ['log-nginx-error', logChunk],
   ['error-not-found', apiErrorResponse],
   ['env', envResponse],
   ['db-info', dbInfoResponse],
@@ -67,6 +69,20 @@ describe('ddeploy api fixtures', () => {
     expect(r.requires?.php).toBe(false);
   });
 
+  it('sites carry the deploy date and the last run, which skips config changes', () => {
+    const site = sitesResponse.parse(fixture('sites')).sites.find((s) => s.name === 'testsite')!;
+    expect(site.deployed_at).toMatch(/^\d{4}-\d\d-\d\dT/);
+    expect(site.last_deploy?.phase).toBe('succeeded');
+    expect(['env-change', 'settings-change']).not.toContain(site.last_run?.kind);
+  });
+
+  it('logs include per-site nginx logs and server logs', () => {
+    const logs = logsResponse.parse(fixture('logs')).logs;
+    expect(logs.find((l) => l.name === 'testsite.error')).toMatchObject({ kind: 'nginx', site: 'testsite' });
+    expect(logs.some((l) => l.kind === 'server' && l.name.endsWith('_fpm'))).toBe(true);
+    for (const l of logs) expect(patterns.logName.test(l.name)).toBe(true);
+  });
+
   it('site config carries the effective settings', () => {
     const settings = siteDetailResponse.parse(fixture('site')).config?.settings;
     expect(settings?.client_max_body_size).toBe('128m');
@@ -89,5 +105,17 @@ describe('ddeploy api fixtures', () => {
     const r = inspectRepoResponse.parse(fixture('inspect-unreachable'));
     expect(r.reachable).toBe(false);
     expect(r.error).toBeTruthy();
+  });
+});
+
+describe('fixture hygiene', () => {
+  // Fixtures are captured from the docker test harness: any credential in
+  // them must be swapped for an obvious placeholder before committing, or
+  // secret scanners (rightly) flag the repo.
+  it.each(['db-credentials', 'env'])('%s holds placeholder credentials only', (name) => {
+    const text = JSON.stringify(fixture(name));
+    const values = [...text.matchAll(/"(?:password|value)":"([^"]*)"/g)].map((m) => m[1]!);
+    const secretish = values.filter((v) => /[A-Za-z]/.test(v) && /\d/.test(v) && v.length >= 16 && !v.startsWith('fixture-'));
+    expect(secretish).toEqual([]);
   });
 });

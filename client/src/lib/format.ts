@@ -18,6 +18,17 @@ export function relativeTime(iso: string | null | undefined, now: Date = new Dat
   return new Date(t).toISOString().slice(0, 10);
 }
 
+/** "Oct 2, 14:05" in local time ("Oct 2 2025, 14:05" outside the current year). */
+export function dateTime(iso: string | null | undefined, now: Date = new Date()): string {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const sameYear = d.getFullYear() === now.getFullYear();
+  const date = d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', ...(sameYear ? {} : { year: 'numeric' }) });
+  const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${date}, ${time}`;
+}
+
 export function duration(seconds: number | null | undefined): string {
   if (seconds == null) return '—';
   if (seconds < 60) return `${seconds}s`;
@@ -67,4 +78,4 @@ export const KIND_LABELS: Record<string, string> = {
   'db-snapshot': 'Database snapshot',
 };
 
-export const kindLabel = (kind: string) => KIND_LABELS[kind] ?? kind;
+export const kindLabel = (kind: string) => KIND_LABELS[kind] ?? (kind || 'Run');

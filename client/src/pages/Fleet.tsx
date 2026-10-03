@@ -4,17 +4,20 @@ import { ExternalLink, RefreshCw, Rocket, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Commit, Trigger } from '../components/RunTable.tsx';
 import { Badge, Card, ConfirmButton, Empty, ErrorBox, PhaseBadge, Spinner, StatusDot, Td, Th, cx, inputClass } from '../components/ui.tsx';
-import { relativeTime, shortSha } from '../lib/format.ts';
+import { dateTime, kindLabel, relativeTime, shortSha } from '../lib/format.ts';
 import { useDeploy, useDoctor, useInfo, useRecentRuns, useSites } from '../lib/api.ts';
 import { RunTable } from '../components/RunTable.tsx';
+
+/** The newest run, config changes aside (older ddeploy: the newest event). */
+const lastRun = (s: SiteSummary) => (s.last_run !== undefined ? s.last_run : s.last_event);
 
 export const FLEET_VIEWS = {
   all: { label: 'All', match: () => true },
   attention: {
     label: 'Needs attention',
-    match: (s: SiteSummary, health?: CheckStatus) => health === 'warn' || health === 'fail' || s.last_event?.phase === 'failed',
+    match: (s: SiteSummary, health?: CheckStatus) => health === 'warn' || health === 'fail' || lastRun(s)?.phase === 'failed',
   },
-  running: { label: 'Running', match: (s: SiteSummary) => s.last_event?.phase === 'started' },
+  running: { label: 'Running', match: (s: SiteSummary) => lastRun(s)?.phase === 'started' },
 } as const satisfies Record<string, { label: string; match: (s: SiteSummary, health?: CheckStatus) => boolean }>;
 export type FleetView = keyof typeof FLEET_VIEWS;
 
@@ -52,7 +55,8 @@ export function Fleet() {
   const counts = useMemo(() => {
     const all = sites.data?.sites ?? [];
     return Object.fromEntries(
-      (Object.keys(FLEET_VIEWS) as FleetView[]).map((v) => [v, all.filter((s) => FLEET_VIEWS[v].match(s, worst.get(s.name))).length]),
+      // Counted like the heading: sites, not their previews.
+      (Object.keys(FLEET_VIEWS) as FleetView[]).map((v) => [v, all.filter((s) => !s.preview && FLEET_VIEWS[v].match(s, worst.get(s.name))).length]),
     ) as Record<FleetView, number>;
   }, [sites.data, worst]);
 
@@ -105,6 +109,7 @@ export function Fleet() {
                   <Th className="w-8" />
                   <Th>Site</Th>
                   <Th>Live</Th>
+                  <Th>Deployed</Th>
                   <Th>Last run</Th>
                   <Th>Stack</Th>
                   <Th className="text-right">Actions</Th>
@@ -127,10 +132,13 @@ export function Fleet() {
 function SiteRow({ server, site, previews, nested, status }: { server: string; site: SiteSummary; previews: number; nested: boolean; status: CheckStatus | 'pending' }) {
   const deploy = useDeploy(server);
   const navigate = useNavigate();
-  const ev = site.last_event;
+  const ev = lastRun(site);
   const phase = ev ? (ev.phase === 'started' ? 'running' : ev.phase) : null;
+  const deployedAt = site.deployed_at ?? site.last_deploy?.ts ?? null;
+  // The last run is only worth its own line when it isn't the deploy itself.
+  const separateRun = ev && ev.run_id !== site.last_deploy?.run_id;
   return (
-    <tr className={cx('hover:bg-stone-50 dark:hover:bg-stone-800/40', (status === 'fail' || ev?.phase === 'failed') && 'bg-red-50/50 dark:bg-red-950/20')}>
+    <tr className={cx('hover:bg-stone-50 dark:hover:bg-stone-800/40', (status === 'fail' || lastRun(site)?.phase === 'failed') && 'bg-red-50/50 dark:bg-red-950/20')}>
       <Td>
         <span className="mt-1.5 inline-block">
           <StatusDot status={status} label={status === 'pending' ? 'checking…' : `health: ${status}`} />
@@ -153,14 +161,29 @@ function SiteRow({ server, site, previews, nested, status }: { server: string; s
         <Commit sha={site.sha} repo={site.repo} subject={site.subject} />
       </Td>
       <Td className="whitespace-nowrap">
-        {ev ? (
+        {deployedAt ? (
+          <div className="space-y-0.5">
+            <div className="text-sm" title={deployedAt}>{dateTime(deployedAt)}</div>
+            <div className="text-xs text-stone-500">
+              {relativeTime(deployedAt)}
+              {site.last_deploy && <> · <Trigger trigger={site.last_deploy.trigger} author={site.last_deploy.author} /></>}
+            </div>
+          </div>
+        ) : (
+          <span className="text-sm text-stone-400">—</span>
+        )}
+      </Td>
+      <Td className="whitespace-nowrap">
+        {separateRun && ev ? (
           <div className="space-y-0.5">
             <div className="flex items-center gap-2">
               {phase && <PhaseBadge phase={phase} />}
               <span className="text-sm" title={ev.ts}>{relativeTime(ev.ts)}</span>
             </div>
-            <div className="text-xs"><Trigger trigger={ev.trigger} /></div>
+            <div className="text-xs text-stone-500">{kindLabel(ev.kind)} · <Trigger trigger={ev.trigger} author={ev.author} /></div>
           </div>
+        ) : ev ? (
+          <span className="text-xs text-stone-400">the deploy</span>
         ) : (
           <span className="text-sm text-stone-400">no history yet</span>
         )}

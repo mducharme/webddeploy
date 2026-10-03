@@ -26,9 +26,21 @@ describe('RunTable', () => {
   it('shows who, what and the result', async () => {
     await withRouter(<RunTable server="local" repo="git@github.com:org/site.git" runs={[run({}), run({ run_id: 'x2', phase: 'failed', error: 'build broke', trigger: 'webhook [abc]' })]} />);
     expect(screen.getByText('alice@example.com')).toBeInTheDocument();
-    expect(screen.getByText('git push')).toBeInTheDocument();
+    expect(screen.getByText('git push')).toBeInTheDocument(); // no pusher, no author: just "git push"
     expect(screen.getByText('build broke')).toBeInTheDocument();
     expect(screen.getAllByRole('link', { name: 'abcdef1' })[0]).toHaveAttribute('href', 'https://github.com/org/site/commit/abcdef1234567');
+  });
+
+  it('a push names who pushed, or the commit author', async () => {
+    await withRouter(
+      <RunTable
+        server="local"
+        runs={[run({ run_id: 'p1', trigger: 'webhook [ab12] by octo-pusher' }), run({ run_id: 'p2', trigger: 'webhook [cd34]', author: 'Jane Dev' })]}
+      />,
+    );
+    expect(screen.getByText('octo-pusher')).toBeInTheDocument();
+    expect(screen.getByText('Jane Dev')).toBeInTheDocument();
+    expect(screen.getAllByText('(git push)')).toHaveLength(2);
   });
 
   it('pages long histories', async () => {

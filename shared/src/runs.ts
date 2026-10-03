@@ -18,6 +18,8 @@ export interface Run {
   from_sha: string | null;
   to_sha: string | null;
   subject: string | null;
+  /** Git author of the deployed commit. */
+  author?: string | null;
   branch: string | null;
   project: string | null;
   error: string | null;
@@ -58,7 +60,7 @@ export function collapseRuns(events: readonly DdeployEvent[], now: Date = new Da
       site: first.site,
       // The final event's kind wins: a deploy turns out to be a rollback
       // only once it's underway.
-      kind: final?.kind ?? first.kind,
+      kind: final?.kind || first.kind,
       phase: final ? final.phase as RunPhase : 'running',
       trigger: first.trigger,
       started_at: started?.ts ?? null,
@@ -67,6 +69,7 @@ export function collapseRuns(events: readonly DdeployEvent[], now: Date = new Da
       from_sha: pick('from_sha') ?? null,
       to_sha: pick('to_sha') ?? null,
       subject: pick('subject') ?? null,
+      author: pick('author') ?? null,
       branch: pick('branch') ?? null,
       project: pick('project') ?? null,
       error: final?.error ?? null,
@@ -166,13 +169,19 @@ export function runFromShow(show: RunShowResponse, now: Date = new Date()): Run 
 
 export type Actor = { type: 'web' | 'manual' | 'webhook' | 'unknown'; label: string };
 
-/** Who started a run, from ddeploy's trigger string ("web (a@b.c)", "manual (deploy)", "webhook [id]"). */
-export function parseTrigger(trigger: string): Actor {
+/**
+ * Who started a run, from ddeploy's trigger string: "web (a@b.c)",
+ * "manual (deploy)", "webhook [id] by <who pushed>". For a push, the
+ * pusher if the forge said; else the deployed commit's author (`author`);
+ * else just "git push".
+ */
+export function parseTrigger(trigger: string, author?: string | null): Actor {
   let m = /^web \((.+)\)$/.exec(trigger);
   if (m) return { type: 'web', label: m[1]! };
   m = /^manual(?: \((.+)\))?$/.exec(trigger);
   if (m) return { type: 'manual', label: m[1] ?? 'root' };
-  if (trigger.startsWith('webhook')) return { type: 'webhook', label: trigger };
+  m = /^webhook(?: \[[^\]]*\])?(?: by (.+))?$/.exec(trigger);
+  if (m) return { type: 'webhook', label: m[1] ?? author ?? 'git push' };
   return { type: 'unknown', label: trigger };
 }
 

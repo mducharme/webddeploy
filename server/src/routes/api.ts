@@ -34,6 +34,12 @@ function siteParam(c: Ctx): string {
   return name;
 }
 
+function logParam(c: Ctx): string {
+  const name = c.req.param('name') ?? '';
+  if (!patterns.logName.test(name)) bad(`invalid log name '${name}'`);
+  return name;
+}
+
 function runParam(c: Ctx): string {
   const id = c.req.param('id') ?? '';
   if (!patterns.runId.test(id)) bad(`invalid run id '${id}'`);
@@ -190,7 +196,7 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
   srv.get('/logs', async (c) => c.json(await c.get('server').client.logs()));
 
   srv.get('/logs/:name', async (c) => {
-    const name = siteParam(c);
+    const name = logParam(c);
     const offset = c.req.query('offset');
     return c.json(
       await c.get('server').client.log(name, offset != null ? { offset: intQuery(c, 'offset', 0, Number.MAX_SAFE_INTEGER) } : { lines: intQuery(c, 'lines', 200, 5000) }),
@@ -199,7 +205,7 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
 
   srv.get('/logs/:name/stream', (c) => {
     const s = c.get('server');
-    const name = siteParam(c);
+    const name = logParam(c);
     const lines = intQuery(c, 'lines', 200, 5000);
     return streamSSE(c, async (stream) => {
       const beat = heartbeat(stream);

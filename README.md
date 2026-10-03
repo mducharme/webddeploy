@@ -10,8 +10,11 @@ What it's for:
   provisions the site with live output. A "next steps" checklist follows:
   environment, database, uploads, domain, deploy on push.
 - **Monitor sites.** The fleet view shows health per site, including
-  whether it actually answers over HTTP, a "needs attention" filter, and
-  runs in progress.
+  whether it actually answers over HTTP, when the live code was deployed
+  and by whom, a "needs attention" filter, and runs in progress.
+- **Read logs.** Each site has its own logs: deploys, nginx errors (with PHP
+  errors) and access. The server-wide nginx and PHP-FPM logs are one click
+  away on the Logs page, and every log follows live.
 - **See deploys, successful and failed.** History per site and fleet-wide,
   with live run output, highlighted errors, "what changed" (the commits
   deployed or taken back out), and retry, roll back or cancel.

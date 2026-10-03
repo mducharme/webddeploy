@@ -4,74 +4,146 @@
         {
             "name": "backup-database",
             "kind": "fleet",
-            "size": 323,
-            "modified_at": "2026-10-02T13:23:01Z"
+            "site": null,
+            "label": "ddeploy",
+            "size": 0,
+            "modified_at": "2026-10-02T18:23:01Z"
         },
         {
             "name": "backup-uploads",
             "kind": "fleet",
-            "size": 330,
-            "modified_at": "2026-10-02T13:17:02Z"
+            "site": null,
+            "label": "ddeploy",
+            "size": 0,
+            "modified_at": "2026-10-02T18:17:01Z"
         },
         {
             "name": "testsite-alt-main",
             "kind": "site",
-            "size": 2643,
-            "modified_at": "2026-10-02T15:03:21Z"
+            "site": "testsite-alt-main",
+            "label": "ddeploy (deploys, previews)",
+            "size": 1014,
+            "modified_at": "2026-10-03T00:33:46Z"
         },
         {
             "name": "testsite-auto-one",
             "kind": "site",
+            "site": "testsite-auto-one",
+            "label": "ddeploy (deploys, previews)",
             "size": 963,
-            "modified_at": "2026-10-02T12:38:20Z"
+            "modified_at": "2026-10-02T17:37:55Z"
         },
         {
             "name": "testsite-collide",
             "kind": "site",
+            "site": "testsite-collide",
+            "label": "ddeploy (deploys, previews)",
             "size": 254,
-            "modified_at": "2026-10-02T12:38:22Z"
+            "modified_at": "2026-10-02T17:37:58Z"
         },
         {
             "name": "testsite-feature-a",
             "kind": "site",
+            "site": "testsite-feature-a",
+            "label": "ddeploy (deploys, previews)",
             "size": 1338,
-            "modified_at": "2026-10-02T12:38:25Z"
+            "modified_at": "2026-10-02T17:38:00Z"
         },
         {
             "name": "testsite-feature-gh",
             "kind": "site",
+            "site": "testsite-feature-gh",
+            "label": "ddeploy (deploys, previews)",
             "size": 565,
-            "modified_at": "2026-10-02T12:37:42Z"
+            "modified_at": "2026-10-02T17:34:34Z"
         },
         {
             "name": "testsite-glob-one",
             "kind": "site",
+            "site": "testsite-glob-one",
+            "label": "ddeploy (deploys, previews)",
             "size": 555,
-            "modified_at": "2026-10-02T12:38:22Z"
+            "modified_at": "2026-10-02T17:37:57Z"
         },
         {
             "name": "testsite",
             "kind": "site",
-            "size": 43626,
-            "modified_at": "2026-10-02T15:03:22Z"
+            "site": "testsite",
+            "label": "ddeploy (deploys, previews)",
+            "size": 27738,
+            "modified_at": "2026-10-03T00:35:43Z"
         },
         {
             "name": "webhook-other",
             "kind": "webhook",
+            "site": null,
+            "label": "ddeploy",
             "size": 749,
-            "modified_at": "2026-10-02T12:38:20Z"
+            "modified_at": "2026-10-02T17:37:56Z"
         },
         {
             "name": "webhook",
             "kind": "webhook",
+            "site": null,
+            "label": "ddeploy",
             "size": 4843,
-            "modified_at": "2026-10-02T12:38:23Z"
+            "modified_at": "2026-10-02T17:37:58Z"
         },
         {
             "name": "wrongname",
             "kind": "site",
-            "size": 780,
-            "modified_at": "2026-10-02T14:57:22Z"
+            "site": "wrongname",
+            "label": "ddeploy (deploys, previews)",
+            "size": 195,
+            "modified_at": "2026-10-02T17:39:18Z"
+        },
+        {
+            "name": "testsite.error",
+            "kind": "nginx",
+            "site": "testsite",
+            "label": "nginx errors + PHP",
+            "size": 0,
+            "modified_at": "2026-10-03T00:35:43Z"
+        },
+        {
+            "name": "testsite.access",
+            "kind": "nginx",
+            "site": "testsite",
+            "label": "nginx access",
+            "size": 0,
+            "modified_at": "2026-10-03T00:35:43Z"
+        },
+        {
+            "name": "nginx_error",
+            "kind": "server",
+            "site": null,
+            "label": "nginx errors (all sites)",
+            "size": 210,
+            "modified_at": "2026-10-02T17:33:43Z"
+        },
+        {
+            "name": "nginx_access",
+            "kind": "server",
+            "site": null,
+            "label": "nginx access (all sites)",
+            "size": 81012,
+            "modified_at": "2026-10-02T17:39:31Z"
+        },
+        {
+            "name": "php8.2_fpm",
+            "kind": "server",
+            "site": null,
+            "label": "PHP-FPM php8.2",
+            "size": 1264,
+            "modified_at": "2026-10-02T17:34:02Z"
+        },
+        {
+            "name": "php8.3_fpm",
+            "kind": "server",
+            "site": null,
+            "label": "PHP-FPM php8.3",
+            "size": 46222,
+            "modified_at": "2026-10-03T00:35:43Z"
         }
     ]
 }

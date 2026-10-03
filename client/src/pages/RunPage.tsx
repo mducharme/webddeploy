@@ -66,7 +66,7 @@ export function RunPage() {
             <PhaseBadge phase={run.phase} />
           </h1>
           <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-sm text-stone-600 dark:text-stone-400">
-            <span>by <Trigger trigger={run.trigger} /></span>
+            <span>by <Trigger trigger={run.trigger} author={run.author} /></span>
             {run.started_at && <span title={run.started_at}>started {relativeTime(run.started_at)}</span>}
             {isTerminal(run.phase) && run.duration_s != null && <span>took {duration(run.duration_s)}</span>}
             {run.branch && <span>branch {run.branch}</span>}

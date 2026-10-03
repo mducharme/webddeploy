@@ -63,7 +63,7 @@ export function OverviewTab({ server, detail }: { server: string; detail: SiteDe
                   {kindLabel(last.kind)} {relativeTime(last.started_at ?? last.finished_at)}
                 </Link>
               </div>
-              <p className="text-stone-500">by <Trigger trigger={last.trigger} />{last.duration_s != null && ` · ${duration(last.duration_s)}`}</p>
+              <p className="text-stone-500">by <Trigger trigger={last.trigger} author={last.author} />{last.duration_s != null && ` · ${duration(last.duration_s)}`}</p>
               {last.error && <p className="text-xs text-red-700 dark:text-red-400">{last.error}</p>}
             </div>
           ) : (

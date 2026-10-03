@@ -25,6 +25,8 @@ export const ddeployEvent = z.object({
   from_sha: z.string().optional(),
   to_sha: z.string().optional(),
   subject: z.string().optional(),
+  /** The deployed commit's git author. */
+  author: z.string().optional(),
   branch: z.string().optional(),
   project: z.string().optional(),
   duration_s: z.number().optional(),
@@ -74,6 +76,12 @@ export const siteSummary = z.object({
   repo: nullableString,
   preview: previewRef.nullable(),
   last_event: ddeployEvent.nullable(),
+  /** Newest run that isn't a config change. */
+  last_run: ddeployEvent.nullable().optional(),
+  /** Newest successful deploy/rollback/provision (or preview deploy). */
+  last_deploy: ddeployEvent.nullable().optional(),
+  /** When the live code went live. */
+  deployed_at: nullableString.optional(),
 });
 export type SiteSummary = z.infer<typeof siteSummary>;
 
@@ -165,7 +173,10 @@ export type DoctorResponse = z.infer<typeof doctorResponse>;
 
 export const logInfo = z.object({
   name: z.string(),
-  kind: z.enum(['site', 'webhook', 'fleet']),
+  /** site (ddeploy's own) | nginx (per-site web server) | server (nginx/PHP-FPM) | webhook | fleet */
+  kind: z.string(),
+  site: nullableString.optional(),
+  label: z.string().optional(),
   size: z.number().nullable(),
   modified_at: z.string(),
 });
@@ -324,6 +335,8 @@ export const patterns = {
   uploadDir: /^[A-Za-z0-9._/-]+$/,
   node: /^(v?[0-9]+(\.[0-9]+){0,2}|lts\/(\*|[a-z]+)|lts|node)$/,
   runId: /^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}$/,
+  /** ddeploy log names: <site>, <site>.access|error, nginx_access|error, phpX.Y_fpm (lib/cmd_api.sh API_LOG_NAME_RE). */
+  logName: /^([a-z0-9][a-z0-9-]{0,27}(\.(access|error))?|nginx_(access|error)|php[0-9]\.[0-9]{1,2}_fpm)$/,
   snapshotId: /^[0-9]{8}T[0-9]{6}Z-[a-z][a-z-]{0,19}$/,
   sha: /^[0-9a-f]{7,40}$/,
   envKey: /^[A-Za-z_][A-Za-z0-9_]*$/,

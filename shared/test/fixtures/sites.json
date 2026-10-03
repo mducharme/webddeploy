@@ -11,24 +11,51 @@
             "docroot": "web",
             "db": "testsite",
             "branch": "main",
-            "sha": "947c19f53c8a55720adbd57ef49b6efcdadfea94",
-            "committed_at": "2026-10-02T12:39:41+00:00",
+            "sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
+            "committed_at": "2026-10-02T17:39:15+00:00",
             "subject": "add a hooks.post-start step that clones a private repo",
             "repo": "ssh://gitfixture@127.0.0.1/srv/git/testsite.git",
             "preview": null,
             "last_event": {
-                "ts": "2026-10-02T15:03:23Z",
-                "run_id": "20261002T150322Z-875dd0",
+                "ts": "2026-10-03T00:35:43Z",
+                "run_id": "20261003T003542Z-4ee6fa",
                 "site": "testsite",
                 "kind": "deploy",
                 "phase": "succeeded",
                 "trigger": "manual",
-                "from_sha": "947c19f53c8a55720adbd57ef49b6efcdadfea94",
-                "to_sha": "947c19f53c8a55720adbd57ef49b6efcdadfea94",
+                "from_sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
+                "to_sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
                 "subject": "add a hooks.post-start step that clones a private repo",
                 "branch": "main",
                 "duration_s": 1
-            }
+            },
+            "last_run": {
+                "ts": "2026-10-03T00:35:43Z",
+                "run_id": "20261003T003542Z-4ee6fa",
+                "site": "testsite",
+                "kind": "deploy",
+                "phase": "succeeded",
+                "trigger": "manual",
+                "from_sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
+                "to_sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
+                "subject": "add a hooks.post-start step that clones a private repo",
+                "branch": "main",
+                "duration_s": 1
+            },
+            "last_deploy": {
+                "ts": "2026-10-03T00:35:43Z",
+                "run_id": "20261003T003542Z-4ee6fa",
+                "site": "testsite",
+                "kind": "deploy",
+                "phase": "succeeded",
+                "trigger": "manual",
+                "from_sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
+                "to_sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
+                "subject": "add a hooks.post-start step that clones a private repo",
+                "branch": "main",
+                "duration_s": 1
+            },
+            "deployed_at": "2026-10-03T00:35:43Z"
         },
         {
             "name": "testsite-alt-main",
@@ -39,8 +66,8 @@
             "docroot": "web",
             "db": "testsite",
             "branch": "alt-main",
-            "sha": "3517ae64fad314ea74a68e8a6323a6db7734a8b7",
-            "committed_at": "2026-10-02T12:37:52+00:00",
+            "sha": "4c63cd6bb31a7a38cb717d34e337ce585478a3b8",
+            "committed_at": "2026-10-02T17:37:27+00:00",
             "subject": "alt-main v2",
             "repo": "ssh://gitfixture@127.0.0.1/srv/git/testsite.git",
             "preview": {
@@ -49,18 +76,45 @@
                 "mode": "shared"
             },
             "last_event": {
-                "ts": "2026-10-02T15:03:21Z",
-                "run_id": "20261002T150321Z-ac84c7",
+                "ts": "2026-10-03T00:33:46Z",
+                "run_id": "20261003T003345Z-c4ce06",
                 "site": "testsite-alt-main",
                 "kind": "provision-preview",
                 "phase": "succeeded",
                 "trigger": "manual",
                 "project": "testsite",
                 "branch": "alt-main",
-                "to_sha": "3517ae64fad314ea74a68e8a6323a6db7734a8b7",
+                "to_sha": "4c63cd6bb31a7a38cb717d34e337ce585478a3b8",
                 "subject": "alt-main v2",
-                "duration_s": 0
-            }
+                "duration_s": 1
+            },
+            "last_run": {
+                "ts": "2026-10-03T00:33:46Z",
+                "run_id": "20261003T003345Z-c4ce06",
+                "site": "testsite-alt-main",
+                "kind": "provision-preview",
+                "phase": "succeeded",
+                "trigger": "manual",
+                "project": "testsite",
+                "branch": "alt-main",
+                "to_sha": "4c63cd6bb31a7a38cb717d34e337ce585478a3b8",
+                "subject": "alt-main v2",
+                "duration_s": 1
+            },
+            "last_deploy": {
+                "ts": "2026-10-03T00:33:46Z",
+                "run_id": "20261003T003345Z-c4ce06",
+                "site": "testsite-alt-main",
+                "kind": "provision-preview",
+                "phase": "succeeded",
+                "trigger": "manual",
+                "project": "testsite",
+                "branch": "alt-main",
+                "to_sha": "4c63cd6bb31a7a38cb717d34e337ce585478a3b8",
+                "subject": "alt-main v2",
+                "duration_s": 1
+            },
+            "deployed_at": "2026-10-03T00:33:46Z"
         }
     ]
 }

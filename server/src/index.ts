@@ -36,6 +36,7 @@ setInterval(() => sessions.sweep(), 3600_000).unref();
 const server = serve({ fetch: app.fetch, hostname: config.host, port: config.port }, (info) => {
   console.log(`webddeploy listening on http://${info.address}:${info.port} (public URL ${config.publicUrl.origin})`);
   for (const s of config.servers) console.log(`  server '${s.id}': ${s.command.join(' ')} api ...`);
+  if (config.google) console.log(`  Google sign-in: the OAuth client's authorized redirect URI must be exactly ${new URL('/auth/callback', config.publicUrl).toString()}`);
   if (config.devLoginEmail) console.warn(`  DEV LOGIN enabled as ${config.devLoginEmail} — development only`);
 });
 

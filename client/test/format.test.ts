@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commitUrl, duration, relativeTime, shortSha } from '../src/lib/format.ts';
+import { commitUrl, dateTime, duration, kindLabel, relativeTime, shortSha } from '../src/lib/format.ts';
 import { stripAnsi } from '../src/lib/stream.ts';
 
 describe('commitUrl', () => {
@@ -42,5 +42,18 @@ describe('formatting', () => {
 
   it('strips ANSI colors from build output', () => {
     expect(stripAnsi('\x1b[1m\x1b[32mok\x1b[0m done\x1b[?25h')).toBe('ok done');
+  });
+});
+
+describe('dateTime', () => {
+  const now = new Date('2026-10-02T12:00:00Z');
+  it('shows date and time, with the year only when it differs', () => {
+    expect(dateTime('2026-10-02T14:05:00Z', now)).toMatch(/Oct.*2.*\d\d:\d\d/);
+    expect(dateTime('2025-03-01T10:00:00Z', now)).toContain('2025');
+    expect(dateTime(null)).toBe('—');
+  });
+  it('labels an unknown or empty kind', () => {
+    expect(kindLabel('')).toBe('Run');
+    expect(kindLabel('db-import')).toBe('Database imported');
   });
 });

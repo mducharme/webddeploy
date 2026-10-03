@@ -4,16 +4,16 @@ import { parseTrigger, patterns, type Run } from '@webddeploy/shared';
 import { commitUrl, duration, kindLabel, relativeTime, shortSha } from '../lib/format.ts';
 import { Empty, Mono, PhaseBadge, Td, Th } from './ui.tsx';
 
-export function Trigger({ trigger }: { trigger: string }) {
-  const a = parseTrigger(trigger);
-  let who = a.label;
+export function Trigger({ trigger, author }: { trigger: string; author?: string | null }) {
+  const a = parseTrigger(trigger, author);
   let via: string | null = null;
   if (a.type === 'web') via = 'web';
   else if (a.type === 'manual') via = 'CLI';
-  else if (a.type === 'webhook') who = 'git push';
-  else if (trigger === 'unknown') who = '—';
+  else if (a.type === 'webhook') via = a.label === 'git push' ? null : 'git push';
+  const who = a.type === 'unknown' && trigger === 'unknown' ? '—' : a.label;
+  const title = author && author !== who ? `${trigger} — commit by ${author}` : trigger;
   return (
-    <span className="text-stone-600 dark:text-stone-400" title={trigger}>
+    <span className="text-stone-600 dark:text-stone-400" title={title}>
       {who}
       {via && <span className="ml-1 text-xs text-stone-400">({via})</span>}
     </span>
@@ -110,7 +110,7 @@ export function RunTable({
                   <span className="block max-w-[26rem] truncate text-stone-600 dark:text-stone-400" title={r.subject}>{r.subject}</span>
                 ) : null}
               </Td>
-              <Td className="whitespace-nowrap">{r.legacy ? <span className="text-xs text-stone-400">before history</span> : <Trigger trigger={r.trigger} />}</Td>
+              <Td className="whitespace-nowrap">{r.legacy ? <span className="text-xs text-stone-400">before history</span> : <Trigger trigger={r.trigger} author={r.author} />}</Td>
               <Td className="whitespace-nowrap text-right tabular-nums">{duration(r.duration_s)}</Td>
               {actions && <Td className="whitespace-nowrap text-right">{actions(r)}</Td>}
             </tr>

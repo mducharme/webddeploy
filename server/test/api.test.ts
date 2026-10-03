@@ -111,6 +111,16 @@ describe('reads', () => {
     ]);
   });
 
+  it('reads per-site nginx and server logs, nothing path-like', async () => {
+    const { req, connector } = makeApp();
+    expect((await req('/api/servers/local/logs/testsite.error?lines=10')).status).toBe(200);
+    expect((await req('/api/servers/local/logs/php8.3_fpm?lines=10')).status).toBe(200);
+    expect((await req('/api/servers/local/logs/nginx_access?lines=10')).status).toBe(200);
+    expect((await req('/api/servers/local/logs/..%2F..%2Fetc%2Fshadow')).status).toBe(400);
+    expect((await req('/api/servers/local/logs/testsite.debug')).status).toBe(400);
+    expect(connector.calls.map((c) => c[1])).toEqual(['testsite.error', 'php8.3_fpm', 'nginx_access']);
+  });
+
   it('rejects a negative offset', async () => {
     const { req } = makeApp();
     expect((await req('/api/servers/local/logs/testsite?offset=-1')).status).toBe(400);
@@ -228,7 +238,8 @@ describe('runs', () => {
         const size = polls >= 3 ? log.size : 10;
         return { api_version: 1, run_id: args[2], size, offset, next_offset: size, rotated: false, text: log.text.slice(offset, size) };
       });
-    const { req } = makeApp({ connector });
+    // A clock just after the fixture run started: it's live, not stale.
+    const { req } = makeApp({ connector, now: () => Date.parse('2026-10-02T15:03:14Z') + 60_000 });
     const events = await readSse(await req('/api/servers/local/runs/20261002T122933Z-195ba4/stream'));
     const phases = events.filter((e) => e.event === 'run').map((e) => (e.data as { phase: string }).phase);
     expect(phases).toEqual(['running', 'succeeded']);

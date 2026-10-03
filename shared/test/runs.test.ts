@@ -50,6 +50,10 @@ describe('collapseRuns', () => {
     expect(collapseRuns([ev({}), ev({ phase: 'succeeded', kind: 'rollback' })])[0]?.kind).toBe('rollback');
   });
 
+  it('falls back to the start event when the final one has no kind', () => {
+    expect(collapseRuns([ev({}), ev({ phase: 'failed', kind: '' })])[0]?.kind).toBe('deploy');
+  });
+
   it('sorts newest first', () => {
     const runs = collapseRuns([
       ev({ run_id: 'old', ts: '2026-10-01T00:00:00Z' }),
@@ -130,12 +134,24 @@ describe('runFromShow', () => {
   });
 });
 
+describe('parseTrigger with the commit author', () => {
+  it('a push names the pusher first, then the commit author', () => {
+    expect(parseTrigger('webhook [a1] by octo', 'Jane Dev').label).toBe('octo');
+    expect(parseTrigger('webhook [a1]', 'Jane Dev').label).toBe('Jane Dev');
+    expect(parseTrigger('web (a@b.c)', 'Jane Dev').label).toBe('a@b.c');
+  });
+  it('folds the author into the run', () => {
+    expect(collapseRuns([ev({}), ev({ phase: 'succeeded', author: 'Jane Dev' })], new Date('2026-10-02T12:01:00Z'))[0]?.author).toBe('Jane Dev');
+  });
+});
+
 describe('parseTrigger', () => {
   it.each([
     ['web (alice@example.com)', { type: 'web', label: 'alice@example.com' }],
     ['manual (deploy)', { type: 'manual', label: 'deploy' }],
     ['manual', { type: 'manual', label: 'root' }],
-    ['webhook [abc123]', { type: 'webhook', label: 'webhook [abc123]' }],
+    ['webhook [abc123]', { type: 'webhook', label: 'git push' }],
+    ['webhook [abc123] by octo-pusher', { type: 'webhook', label: 'octo-pusher' }],
     ['cron', { type: 'unknown', label: 'cron' }],
   ])('%s', (trigger, expected) => {
     expect(parseTrigger(trigger)).toEqual(expected);
