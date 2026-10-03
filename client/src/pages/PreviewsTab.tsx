@@ -10,8 +10,8 @@ import { relativeTime } from '../lib/format.ts';
 import { Can, useCan } from '../lib/role.tsx';
 
 const MODE_HELP = {
-  shared: "Uses the project's database and uploads. Content entered in the preview is the project's content; migrations on the branch run against it.",
-  isolated: "Its own database and uploads, copied from the project once at creation. Safe for destructive migrations; what's entered in it goes away with it.",
+  shared: "Uses the site's database and uploads. Content entered in the preview is the site's content; migrations on the branch run against it.",
+  isolated: "Its own database and uploads, copied from the site once at creation. Safe for destructive migrations; what's entered in it goes away with it.",
 } as const;
 
 export function PreviewsTab({ server, project, repo }: { server: string; project: string; repo?: string | null }) {
@@ -90,7 +90,7 @@ function NewPreview({ server, project, taken }: { server: string; project: strin
           {effective === 'isolated' && (
             <label className="mt-2 flex items-center gap-2 text-sm">
               <input type="checkbox" checked={seed} onChange={(e) => setSeed(e.target.checked)} />
-              Copy the project's database and uploads into it (otherwise it starts empty)
+              Copy the site's database and uploads into it (otherwise it starts empty)
             </label>
           )}
         </fieldset>

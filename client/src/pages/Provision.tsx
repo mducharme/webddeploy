@@ -97,7 +97,7 @@ export function Provision() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-4">
-      <h1 className="text-xl font-semibold">New project</h1>
+      <h1 className="text-xl font-semibold">New site</h1>
 
       <Card title="1. Repository">
         <div className="grid gap-4 p-4 sm:grid-cols-[1fr_12rem]">

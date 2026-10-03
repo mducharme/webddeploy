@@ -54,7 +54,7 @@ function Shell({ children }: { children: ReactNode }) {
           </nav>
           <Can role="admin">
             <Link to="/s/$server/provision" params={{ server }}>
-              <Button variant="primary"><Plus className="size-4" /> New project</Button>
+              <Button variant="primary"><Plus className="size-4" /> New site</Button>
             </Link>
           </Can>
           <div className="flex items-center gap-2 text-sm">
