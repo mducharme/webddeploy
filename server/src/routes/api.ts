@@ -2,6 +2,10 @@ import {
   PREVIEW_KINDS,
   SECRET_KEY,
   envChangeRequest,
+  fetchTestRequest,
+  sourceSpec,
+  forgetHostRequest,
+  uploadsFetchRequest,
   optionsRequest,
   serverConfigRequest,
   SERVER_SETTINGS,
@@ -635,6 +639,48 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
     return audited(user.email, s.ref.id, 'uploads.import', name, { dir, mode, source: label, files, bytes: length || null }, async () => {
       const archive = Readable.fromWeb(body as never).pipe(byteLimit(max ?? Infinity));
       const { run_id } = await s.client.startUploadsImport(name, user.email, dir, mode, archive);
+      return { body: { run_id }, runId: run_id, status: 202 };
+    }, c);
+  });
+
+  // --- copy from another server (rsync over SSH, run by ddeploy) ----------
+
+  srv.get('/fetch-key', async (c) => c.json(await c.get('server').client.fetchKey()));
+
+  srv.post('/fetch-key/forget', async (c) => {
+    const s = c.get('server');
+    const user = c.get('user');
+    const parsed = forgetHostRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return issues(c, parsed.error);
+    return audited(user.email, s.ref.id, 'fetch.forget-host', null, parsed.data, async () => ({
+      body: await s.client.forgetFetchHost(user.email, parsed.data.host, parsed.data.port),
+    }), c);
+  });
+
+  srv.post('/sites/:name/uploads/fetch-test', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const parsed = fetchTestRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return issues(c, parsed.error);
+    const { source, accept } = parsed.data;
+    // Confirming a host key is a trust decision: it's audited; a plain test isn't.
+    if (!accept) return c.json(await s.client.fetchTest(name, user.email, source));
+    return audited(user.email, s.ref.id, 'fetch.accept-host', name, { host: source.host, port: source.port, fingerprint: accept }, async () => ({
+      body: await s.client.fetchTest(name, user.email, source, accept),
+    }), c);
+  });
+
+  srv.post('/sites/:name/uploads/fetch', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const parsed = uploadsFetchRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return issues(c, parsed.error);
+    const { dir, mode, source } = parsed.data;
+    return audited(user.email, s.ref.id, 'uploads.fetch', name, { dir, mode, source: sourceSpec(source), port: source.port }, async () => {
+      const { run_id } = await s.client.startUploadsFetch(name, user.email, dir, mode, source);
+      s.cache.invalidate(`site:${name}`);
       return { body: { run_id }, runId: run_id, status: 202 };
     }, c);
   });

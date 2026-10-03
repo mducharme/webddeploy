@@ -341,6 +341,32 @@ export const uploadsResponse = z.object({
 });
 export type UploadsResponse = z.infer<typeof uploadsResponse>;
 
+/** `api fetch-key`: the key "Copy from another server" logs in with. */
+export const fetchKeyResponse = z.object({
+  api_version: z.number(),
+  public_key: z.string(),
+  authorized_keys: z.string(),
+  server_ip: z.string(),
+  rsync: z.boolean(),
+  known_hosts: z.array(z.object({ host: z.string(), type: z.string(), fingerprint: z.string() })),
+});
+export type FetchKeyResponse = z.infer<typeof fetchKeyResponse>;
+
+/** `api fetch-test`: the host key's state, then (when confirmed) a dry run. */
+export const fetchTestResponse = z.object({
+  api_version: z.number(),
+  host: z.string(),
+  port: z.number(),
+  host_key: z.object({
+    status: z.enum(['known', 'unknown', 'changed', 'unreachable']),
+    fingerprints: z.array(z.object({ type: z.string(), fingerprint: z.string() })),
+  }),
+  files: z.number().nullable(),
+  bytes: z.number().nullable(),
+  error: z.string().nullable(),
+});
+export type FetchTestResponse = z.infer<typeof fetchTestResponse>;
+
 export const backupDump = z.object({ file: z.string(), bytes: z.number().nullable(), created_at: nullableString, kept: z.boolean() });
 export type BackupDump = z.infer<typeof backupDump>;
 
@@ -402,4 +428,8 @@ export const patterns = {
   uploadsVersion: /^[0-9]{8}T[0-9]{6}Z$/,
   sha: /^[0-9a-f]{7,40}$/,
   envKey: /^[A-Za-z_][A-Za-z0-9_]*$/,
+  /** lib/cmd_fetch.sh FETCH_USER_RE / FETCH_PATH_RE. */
+  sshUser: /^[a-z_][a-z0-9_.-]{0,31}$/,
+  sshPath: /^[A-Za-z0-9._/@+~-]*$/,
+  fingerprint: /^SHA256:[A-Za-z0-9+/=]{20,80}$/,
 } as const;

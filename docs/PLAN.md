@@ -472,3 +472,20 @@ webddeploy 81 shared + 87 server + 50 client.
   describes the same keys for the form; a test fails if the two drift.
 - **Later:** per-site roles (an admin of some sites only) would fit
   `requiredRole` by adding the site to the lookup; not needed yet.
+
+## Copy from another server (2026-10-03)
+
+- **Pull, not push.** ddeploy runs rsync over an outgoing SSH connection
+  (`uploads-import --from-ssh`), so the firewall needs nothing. The old
+  host must accept SSH from this server.
+- **One server-wide key** (`/etc/ddeploy/fetch-key`). The UI shows the
+  `authorized_keys` line bound to the folder with `rrsync -ro`, plus
+  `restrict`. Per-site keys weren't worth the extra setup: the rrsync
+  binding already limits each key to one folder.
+- **Host keys: confirmed, never trusted on first use.** `fetch-test`
+  reports unknown or changed keys with their fingerprints. `--accept <fp>`
+  remembers a key only if it matches what the host presents right then.
+  `run start uploads-fetch` refuses unconfirmed hosts. Confirming and
+  forgetting are audited.
+- **Admins only**: it reaches out to other servers, like uploads change
+  data.

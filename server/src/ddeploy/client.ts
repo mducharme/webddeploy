@@ -22,6 +22,10 @@ import {
   siteDetailResponse,
   sitesResponse,
   uploadsResponse,
+  fetchKeyResponse,
+  fetchTestResponse,
+  sourceSpec,
+  type FetchSource,
   backupsResponse,
   previewCreateFlags,
   serverConfigResponse,
@@ -214,6 +218,30 @@ export class DdeployClient {
       stdin: archive,
       timeoutMs: 6 * 3600_000,
     });
+  }
+
+  fetchKey() {
+    return this.call(fetchKeyResponse, ['fetch-key']);
+  }
+
+  forgetFetchHost(actor: string, host: string, port: number) {
+    return this.call(fetchKeyResponse, ['fetch-key', 'forget', '--host', host, '--port', String(port), '--actor', actor]);
+  }
+
+  /** Host-key check (remembering it when `accept` matches) and a dry run; can take minutes on a big folder. */
+  fetchTest(site: string, actor: string, source: Required<FetchSource>, accept?: string) {
+    return this.call(
+      fetchTestResponse,
+      ['fetch-test', site, '--source', sourceSpec(source), '--port', String(source.port), ...(accept ? ['--accept', accept] : []), '--actor', actor],
+      { timeoutMs: 330_000 },
+    );
+  }
+
+  startUploadsFetch(site: string, actor: string, dir: string, mode: 'merge' | 'replace', source: Required<FetchSource>) {
+    return this.call(runStartResponse, [
+      'run', 'start', 'uploads-fetch', site, '--dir', dir, '--mode', mode,
+      '--source', sourceSpec(source), '--port', String(source.port), '--actor', actor,
+    ], { timeoutMs: 60_000 });
   }
 
   startUploadsRestore(site: string, actor: string, snapshot: string) {

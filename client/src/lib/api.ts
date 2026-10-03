@@ -5,6 +5,9 @@ import type {
   DbInfoResponse,
   UploadsResponse,
   BackupsResponse,
+  FetchKeyResponse,
+  FetchSource,
+  FetchTestResponse,
   GlobalOptions,
   Role,
   ServerConfigResponse,
@@ -72,6 +75,7 @@ export const keys = {
   uploads: (s: string, n: string) => ['uploads', s, n] as const,
   backups: (s: string, n: string) => ['backups', s, n] as const,
   users: ['users'] as const,
+  fetchKey: (s: string) => ['fetch-key', s] as const,
   options: ['options'] as const,
   config: (s: string) => ['config', s] as const,
   branches: (s: string, n: string) => ['branches', s, n] as const,
@@ -319,6 +323,29 @@ export function useSetServerConfig(server: string) {
 
 export const useUploadsRestore = (server: string) => useStartRun(server, (site) => `/sites/${site}/uploads/restore`);
 export const useUploadsSnapshot = (server: string) => useStartRun(server, (site) => `/sites/${site}/uploads/snapshot`);
+export const useUploadsFetch = (server: string) => useStartRun(server, (site) => `/sites/${site}/uploads/fetch`);
+
+export const useFetchKey = (server: string, enabled = true) =>
+  useQuery({ queryKey: keys.fetchKey(server), queryFn: () => api<FetchKeyResponse>(`${base(server)}/fetch-key`), enabled, staleTime: 60_000 });
+
+export function useFetchTest(server: string, name: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { source: FetchSource; accept?: string }) =>
+      api<FetchTestResponse>(`${base(server)}/sites/${name}/uploads/fetch-test`, { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: (_, { accept }) => {
+      if (accept) void qc.invalidateQueries({ queryKey: keys.fetchKey(server) });
+    },
+  });
+}
+
+export function useForgetHost(server: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: { host: string; port: number }) => api<FetchKeyResponse>(`${base(server)}/fetch-key/forget`, { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: (r) => qc.setQueryData(keys.fetchKey(server), r),
+  });
+}
 
 /** POSTs a body (a File, or a tar Blob built from a folder) with upload progress; resolves with the run id. */
 export function postWithProgress(url: string, body: Blob, headers: Record<string, string>, onProgress: (fraction: number) => void): Promise<{ run_id: string }> {

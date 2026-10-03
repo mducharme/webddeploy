@@ -191,3 +191,47 @@ export function previewCreateFlags(req: z.output<typeof previewCreateRequest>): 
   if (req.auth === false) flags.push('--no-auth');
   return flags;
 }
+
+// --- copy from another server (uploads-fetch) ------------------------------
+
+/** Where to copy from. ddeploy re-validates all of it (lib/cmd_fetch.sh). */
+export const fetchSource = z.object({
+  user: z.string().trim().regex(patterns.sshUser, 'a login like deploy or www-data'),
+  host: z
+    .string()
+    .trim()
+    .regex(patterns.hostname, 'a hostname or IPv4 address')
+    .refine((h) => !h.startsWith('-'), 'invalid host'),
+  port: z.coerce.number().int().min(1).max(65535).default(22),
+  path: z
+    .string()
+    .trim()
+    .max(400)
+    .regex(patterns.sshPath, 'letters, digits and . _ / @ + ~ - only')
+    .refine((p) => !p.startsWith('-'), "can't start with -")
+    .refine((p) => !`/${p}/`.includes('/../'), "can't contain ..")
+    .default(''),
+});
+export type FetchSource = z.input<typeof fetchSource>;
+
+/** user@host:path, as ddeploy takes it (--source). */
+export function sourceSpec(s: { user: string; host: string; path?: string }): string {
+  return `${s.user}@${s.host}:${s.path ?? ''}`;
+}
+
+export const fetchTestRequest = z.object({
+  source: fetchSource,
+  /** The fingerprint the admin confirmed; must match what the host presents now. */
+  accept: z.string().regex(patterns.fingerprint).optional(),
+});
+
+export const uploadsFetchRequest = z.object({
+  dir: z.string().regex(patterns.uploadDir).refine((d) => !d.startsWith('/')),
+  mode: z.enum(['merge', 'replace']).default('merge'),
+  source: fetchSource,
+});
+
+export const forgetHostRequest = z.object({
+  host: fetchSource.shape.host,
+  port: fetchSource.shape.port,
+});

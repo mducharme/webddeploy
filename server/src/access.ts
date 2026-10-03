@@ -104,7 +104,7 @@ export class Access {
 export class AccessError extends Error {}
 
 /** The role a request needs, from its method and path. Default: anything that changes something needs admin. */
-const ADMIN_READS = [/\/env$/, /\/db$/, /\/db\/dump$/, /\/backups\/download$/, /\/uploads\/download$/, /^\/api\/activity$/, /\/provision\//];
+const ADMIN_READS = [/\/env$/, /\/db$/, /\/db\/dump$/, /\/backups\/download$/, /\/uploads\/download$/, /^\/api\/activity$/, /\/provision\//, /\/fetch-key$/];
 export function requiredRole(method: string, path: string): Role {
   if (path.startsWith('/api/admin/') || /^\/api\/servers\/[^/]+\/config$/.test(path)) return 'superadmin';
   if (method !== 'GET' && method !== 'HEAD') return 'admin';

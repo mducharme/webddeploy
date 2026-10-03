@@ -1,0 +1,25 @@
+{
+    "api_version": 1,
+    "host": "127.0.0.1",
+    "port": 22,
+    "host_key": {
+        "status": "unknown",
+        "fingerprints": [
+            {
+                "type": "RSA",
+                "fingerprint": "SHA256:kQuRQujMueVoqCF4BxFbzeNxwMtT/LGgr4gkf9eCu9w"
+            },
+            {
+                "type": "ECDSA",
+                "fingerprint": "SHA256:0qIMrqjxXvMtaRtPOg1pM0qJv/i1bRDQxgqgebNlTVw"
+            },
+            {
+                "type": "ED25519",
+                "fingerprint": "SHA256:gnC9p+wt8OxQYBvT1Pe0+GsKV43d/73HqP3fZXeoQIo"
+            }
+        ]
+    },
+    "files": null,
+    "bytes": null,
+    "error": null
+}

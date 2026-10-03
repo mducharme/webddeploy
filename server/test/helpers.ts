@@ -68,6 +68,8 @@ export class FakeConnector implements Connector {
       case 'branches': return fixture('branches');
       case 'uploads': return fixture('uploads');
       case 'config': return fixture('config');
+      case 'fetch-key': return fixture('fetch-key');
+      case 'fetch-test': return args.includes('--accept') ? fixture('fetch-test-known') : fixture('fetch-test-unknown');
       case 'backups':
         if (['keep', 'unkeep', 'delete'].includes(args[1]!)) return { api_version: 1, file: args[4], action: args[1] };
         return fixture('backups');

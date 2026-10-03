@@ -8,6 +8,7 @@ import { bytes, relativeTime } from '../lib/format.ts';
 import { fromDrop, fromFiles, withoutTop, type Picked } from '../lib/pickFiles.ts';
 import { buildTar } from '../lib/tar.ts';
 import { useCan } from '../lib/role.tsx';
+import { CopyFromServer } from './CopyFromServer.tsx';
 
 export function FilesTab({ server, name }: { server: string; name: string }) {
   const uploads = useUploads(server, name);
@@ -35,6 +36,7 @@ export function FilesTab({ server, name }: { server: string; name: string }) {
       ) : (
         u.dirs.map((d) => <UploadDir key={d.dir} server={server} name={name} dir={d} maxBytes={u.max_bytes} onStarted={goRun} />)
       )}
+      {canAct && u.dirs.length > 0 && <CopyFromServer server={server} name={name} dirs={u.dirs.map((d) => d.dir)} onStarted={goRun} />}
       <Card
         title="Snapshots"
         actions={

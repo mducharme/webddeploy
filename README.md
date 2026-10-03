@@ -38,7 +38,10 @@ What it's for:
   folder. Folders are packed into a tar in the browser and sent as a
   single upload, even with thousands of files. Each upload snapshots the
   folder first, so it can be undone, and folders can be downloaded as a
-  `.tar.gz`.
+  `.tar.gz`. **Copy from another server** pulls a folder straight from
+  the old host over SSH. The card shows the read-only `authorized_keys`
+  line to add there, asks you to confirm the host's fingerprint the first
+  time, dry-runs the copy (file count and size), then copies it as a run.
 - **Manage backups.** Each site has a Backups tab: last backups and
   schedules, database dumps (download, restore, keep forever, delete),
   restoring a file folder from the backup, and versions that bring back

@@ -1,0 +1,24 @@
+{
+    "api_version": 1,
+    "public_key": "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMkby+d7pZIvzDmfB8QvxIsX7Kie/VSAFl0z5zuGaEXY ddeploy-fetch@web",
+    "authorized_keys": "command=\"rrsync -ro /path/to/uploads\",restrict ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMkby+d7pZIvzDmfB8QvxIsX7Kie/VSAFl0z5zuGaEXY ddeploy-fetch@web",
+    "server_ip": "10.88.90.4",
+    "rsync": true,
+    "known_hosts": [
+        {
+            "host": "127.0.0.1",
+            "type": "RSA",
+            "fingerprint": "SHA256:kQuRQujMueVoqCF4BxFbzeNxwMtT/LGgr4gkf9eCu9w"
+        },
+        {
+            "host": "127.0.0.1",
+            "type": "ECDSA",
+            "fingerprint": "SHA256:0qIMrqjxXvMtaRtPOg1pM0qJv/i1bRDQxgqgebNlTVw"
+        },
+        {
+            "host": "127.0.0.1",
+            "type": "ED25519",
+            "fingerprint": "SHA256:gnC9p+wt8OxQYBvT1Pe0+GsKV43d/73HqP3fZXeoQIo"
+        }
+    ]
+}

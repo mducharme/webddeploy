@@ -77,6 +77,7 @@ export const KIND_LABELS: Record<string, string> = {
   'db-restore': 'Database restored',
   'db-snapshot': 'Database snapshot',
   'uploads-import': 'Files uploaded',
+  'uploads-fetch': 'Files copied from another server',
   'uploads-restore': 'Files restored',
   'uploads-snapshot': 'Files snapshot',
   'backup-database': 'Database backup',
