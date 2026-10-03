@@ -21,6 +21,7 @@ import {
   runStartResponse,
   siteDetailResponse,
   sitesResponse,
+  uploadsResponse,
   previewCreateFlags,
   type PreviewCreateRequest,
   type ProvisionRequestParsed,
@@ -199,5 +200,29 @@ export class DdeployClient {
 
   startPreviewRemove(project: string, actor: string, branch: string) {
     return this.call(runStartResponse, ['run', 'start', 'preview-remove', project, '--branch', branch, '--actor', actor]);
+  }
+
+  uploads(site: string) {
+    return this.call(uploadsResponse, ['uploads', site], { timeoutMs: 90_000 });
+  }
+
+  /** The archive goes to ddeploy's stdin; it's checked and unpacked in a detached run. */
+  startUploadsImport(site: string, actor: string, dir: string, mode: 'merge' | 'replace', archive: Readable) {
+    return this.call(runStartResponse, ['run', 'start', 'uploads-import', site, '--dir', dir, '--mode', mode, '--actor', actor], {
+      stdin: archive,
+      timeoutMs: 6 * 3600_000,
+    });
+  }
+
+  startUploadsRestore(site: string, actor: string, snapshot: string) {
+    return this.call(runStartResponse, ['run', 'start', 'uploads-restore', site, '--snapshot', snapshot, '--actor', actor]);
+  }
+
+  startUploadsSnapshot(site: string, actor: string) {
+    return this.call(runStartResponse, ['run', 'start', 'uploads-snapshot', site, '--actor', actor]);
+  }
+
+  uploadsDownload(site: string, dir: string): Promise<RawStream> {
+    return this.connector.stream(['uploads', 'download', site, '--dir', dir]);
   }
 }

@@ -3,6 +3,7 @@ import type {
   CommitsResponse,
   DbCredentialsResponse,
   DbInfoResponse,
+  UploadsResponse,
   EnvChangeRequest,
   EnvEntry,
   SettingsRequest,
@@ -63,6 +64,7 @@ export const keys = {
   activity: ['activity'] as const,
   env: (s: string, n: string) => ['env', s, n] as const,
   db: (s: string, n: string) => ['db', s, n] as const,
+  uploads: (s: string, n: string) => ['uploads', s, n] as const,
   branches: (s: string, n: string) => ['branches', s, n] as const,
   commits: (s: string, n: string, from: string, to: string) => ['commits', s, n, from, to] as const,
 };
@@ -238,6 +240,48 @@ export const useDbSnapshot = (server: string) => useStartRun(server, (site) => `
 
 export const useCancelRun = (server: string) =>
   useMutation({ mutationFn: (id: string) => api<{ cancelled: boolean }>(`${base(server)}/runs/${id}/cancel`, { method: 'POST' }) });
+
+export const useUploads = (server: string, name: string) =>
+  useQuery({ queryKey: keys.uploads(server, name), queryFn: () => api<UploadsResponse>(`${base(server)}/sites/${name}/uploads`) });
+
+export const uploadsDownloadUrl = (server: string, name: string, dir: string) =>
+  `${base(server)}/sites/${name}/uploads/download?dir=${encodeURIComponent(dir)}`;
+
+export const useUploadsRestore = (server: string) => useStartRun(server, (site) => `/sites/${site}/uploads/restore`);
+export const useUploadsSnapshot = (server: string) => useStartRun(server, (site) => `/sites/${site}/uploads/snapshot`);
+
+/** POSTs a body (a File, or a tar Blob built from a folder) with upload progress; resolves with the run id. */
+export function postWithProgress(url: string, body: Blob, headers: Record<string, string>, onProgress: (fraction: number) => void): Promise<{ run_id: string }> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', url);
+    xhr.setRequestHeader('content-type', 'application/octet-stream');
+    for (const [k, v] of Object.entries(headers)) xhr.setRequestHeader(k, v.replace(/[^\x20-\x7e]/g, '_'));
+    xhr.upload.onprogress = (e) => e.lengthComputable && onProgress(e.loaded / e.total);
+    xhr.onload = () => {
+      let parsed: { run_id?: string; error?: { code: string; message: string } } | null = null;
+      try {
+        parsed = JSON.parse(xhr.responseText);
+      } catch {
+        /* not JSON: nginx's own error page (e.g. 413) */
+      }
+      if (xhr.status >= 200 && xhr.status < 300 && parsed?.run_id) resolve({ run_id: parsed.run_id });
+      else if (xhr.status === 413) reject(new ApiError(413, 'too_large', 'the upload is larger than the server accepts (WEB_UPLOAD_MAX_MB)'));
+      else reject(new ApiError(xhr.status, parsed?.error?.code ?? 'http_error', parsed?.error?.message ?? `upload failed (${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new ApiError(0, 'network', 'upload failed: network error'));
+    xhr.send(body);
+  });
+}
+
+export function uploadFiles(server: string, site: string, dir: string, mode: 'merge' | 'replace', body: Blob, label: string, fileCount: number, onProgress: (f: number) => void) {
+  return postWithProgress(
+    `${base(server)}/sites/${site}/uploads/import?dir=${encodeURIComponent(dir)}&mode=${mode}`,
+    body,
+    { 'x-filename': label, 'x-file-count': String(fileCount) },
+    onProgress,
+  );
+}
 
 /**
  * Uploads a dump for import. XHR rather than fetch, for upload progress;

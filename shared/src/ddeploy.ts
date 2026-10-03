@@ -55,7 +55,7 @@ export const infoResponse = z.object({
   defaults: z
     .object({ client_max_body_size: z.string(), fpm_max_children: z.string(), db_backup_retention_days: z.string() })
     .optional(),
-  limits: z.object({ db_import_max_bytes: z.number() }).optional(),
+  limits: z.object({ db_import_max_bytes: z.number(), uploads_import_max_bytes: z.number().optional() }).optional(),
 });
 export type InfoResponse = z.infer<typeof infoResponse>;
 
@@ -313,6 +313,26 @@ export const commitsResponse = z.object({
 });
 export type CommitsResponse = z.infer<typeof commitsResponse>;
 
+export const uploadsResponse = z.object({
+  ...versioned,
+  site: z.string(),
+  /** The site whose files these are: a shared-mode preview's parent. */
+  target: z.string(),
+  dirs: z.array(
+    z.object({
+      dir: z.string(),
+      path: z.string(),
+      exists: z.boolean(),
+      /** null: still counting after 10s (a very large folder). */
+      files: z.number().nullable(),
+      bytes: z.number().nullable(),
+    }),
+  ),
+  snapshots: z.array(z.object({ id: z.string(), dir: z.string(), reason: z.string(), created_at: z.string() })),
+  max_bytes: z.number(),
+});
+export type UploadsResponse = z.infer<typeof uploadsResponse>;
+
 export const runCancelResponse = z.object({ ...versioned, run_id: z.string(), cancelled: z.boolean() });
 
 export const apiErrorResponse = z.object({
@@ -338,6 +358,7 @@ export const patterns = {
   /** ddeploy log names: <site>, <site>.access|error, nginx_access|error, phpX.Y_fpm (lib/cmd_api.sh API_LOG_NAME_RE). */
   logName: /^([a-z0-9][a-z0-9-]{0,27}(\.(access|error))?|nginx_(access|error)|php[0-9]\.[0-9]{1,2}_fpm)$/,
   snapshotId: /^[0-9]{8}T[0-9]{6}Z-[a-z][a-z-]{0,19}$/,
+  uploadsSnapshotId: /^[0-9]{8}T[0-9]{6}Z-[a-z0-9-]{1,40}$/,
   sha: /^[0-9a-f]{7,40}$/,
   envKey: /^[A-Za-z_][A-Za-z0-9_]*$/,
 } as const;

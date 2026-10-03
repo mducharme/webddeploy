@@ -231,3 +231,52 @@ describe('previews', () => {
     expect(connector.calls).toEqual([]);
   });
 });
+
+describe('uploads', () => {
+  it('lists upload dirs and snapshots', async () => {
+    const { req } = makeApp();
+    const body = await json(await req(`${site}/uploads`));
+    expect(body.dirs.map((d: { dir: string }) => d.dir)).toContain('web/uploads');
+  });
+
+  it('streams an uploaded archive to ddeploy, with the dir and mode as validated flags', async () => {
+    const { req, connector, audit } = makeApp();
+    const res = await req(`${site}/uploads/import?dir=web/uploads&mode=replace`, {
+      method: 'POST',
+      body: 'TARDATA',
+      headers: { 'content-type': 'application/octet-stream', 'x-filename': 'media (folder)', 'x-file-count': '42' },
+    });
+    expect(res.status).toBe(202);
+    expect(connector.calls).toContainEqual(['run', 'start', 'uploads-import', 'testsite', '--dir', 'web/uploads', '--mode', 'replace', '--actor', ADMIN]);
+    expect(connector.stdins).toEqual(['TARDATA']);
+    expect(audit.list()[0]).toMatchObject({ action: 'uploads.import', detail: { dir: 'web/uploads', mode: 'replace', source: 'media (folder)', files: 42 } });
+  });
+
+  it.each([
+    ['an absolute dir', '?dir=/etc&mode=merge'],
+    ['a dir with shell characters', '?dir=web;id&mode=merge'],
+    ['a bad mode', '?dir=web/uploads&mode=nuke'],
+    ['no dir', '?mode=merge'],
+  ])('refuses %s without calling ddeploy', async (_, q) => {
+    const { req, connector } = makeApp();
+    const res = await req(`${site}/uploads/import${q}`, { method: 'POST', body: 'x', headers: { 'content-type': 'application/octet-stream' } });
+    expect(res.status).toBe(400);
+    expect(connector.calls.some((c) => c[0] === 'run')).toBe(false);
+  });
+
+  it('restores and snapshots', async () => {
+    const { req, connector } = makeApp();
+    expect((await req(`${site}/uploads/restore`, { method: 'POST', body: JSON.stringify({ snapshot: '../../x' }) })).status).toBe(400);
+    expect((await req(`${site}/uploads/restore`, { method: 'POST', body: JSON.stringify({ snapshot: '20261003T023535Z-pre-import-web-uploads' }) })).status).toBe(202);
+    expect((await req(`${site}/uploads/snapshot`, { method: 'POST' })).status).toBe(202);
+    expect(connector.calls).toContainEqual(['run', 'start', 'uploads-restore', 'testsite', '--snapshot', '20261003T023535Z-pre-import-web-uploads', '--actor', ADMIN]);
+    expect(connector.calls).toContainEqual(['run', 'start', 'uploads-snapshot', 'testsite', '--actor', ADMIN]);
+  });
+
+  it('downloads a folder as a .tar.gz', async () => {
+    const { req, connector } = makeApp();
+    const res = await req(`${site}/uploads/download?dir=web/uploads`);
+    expect(res.headers.get('content-disposition')).toMatch(/^attachment; filename="testsite-web-uploads-\d{8}T\d{6}Z\.tar\.gz"$/);
+    expect(connector.calls).toContainEqual(['uploads', 'download', 'testsite', '--dir', 'web/uploads']);
+  });
+});

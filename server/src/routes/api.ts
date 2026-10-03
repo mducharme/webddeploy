@@ -469,6 +469,77 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
     }, c);
   });
 
+  // --- uploads (files) -----------------------------------------------------
+
+  srv.get('/sites/:name/uploads', async (c) => c.json(await c.get('server').client.uploads(siteParam(c))));
+
+  srv.post('/sites/:name/uploads/import', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const dir = c.req.query('dir') ?? '';
+    const mode = c.req.query('mode') ?? 'merge';
+    if (!patterns.uploadDir.test(dir) || dir.startsWith('/')) bad('dir must be one of the site\'s upload dirs');
+    if (mode !== 'merge' && mode !== 'replace') bad('mode is merge or replace');
+    const body = c.req.raw.body;
+    if (!body) bad('send the archive as the request body');
+    const length = Number(c.req.header('content-length') ?? 0);
+    const info = await s.cache.get('info', 5 * 60_000, () => s.client.info());
+    const max = info.limits?.uploads_import_max_bytes;
+    if (max && length > max) bad(`the upload is larger than the ${Math.round(max / 1024 / 1024)} MB limit`);
+    const label = (c.req.header('x-filename') ?? 'upload').slice(0, 200);
+    const files = Number(c.req.header('x-file-count') ?? 0) || null;
+    return audited(user.email, s.ref.id, 'uploads.import', name, { dir, mode, source: label, files, bytes: length || null }, async () => {
+      const archive = Readable.fromWeb(body as never).pipe(byteLimit(max ?? Infinity));
+      const { run_id } = await s.client.startUploadsImport(name, user.email, dir, mode, archive);
+      return { body: { run_id }, runId: run_id, status: 202 };
+    }, c);
+  });
+
+  srv.post('/sites/:name/uploads/restore', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const body = z.object({ snapshot: z.string().regex(patterns.uploadsSnapshotId) }).safeParse(await c.req.json().catch(() => null));
+    if (!body.success) bad('snapshot id required');
+    return audited(user.email, s.ref.id, 'uploads.restore', name, { snapshot: body.data.snapshot }, async () => {
+      const { run_id } = await s.client.startUploadsRestore(name, user.email, body.data.snapshot);
+      return { body: { run_id }, runId: run_id, status: 202 };
+    }, c);
+  });
+
+  srv.post('/sites/:name/uploads/snapshot', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    return audited(user.email, s.ref.id, 'uploads.snapshot', name, undefined, async () => {
+      const { run_id } = await s.client.startUploadsSnapshot(name, user.email);
+      return { body: { run_id }, runId: run_id, status: 202 };
+    }, c);
+  });
+
+  srv.get('/sites/:name/uploads/download', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const dir = c.req.query('dir') ?? '';
+    if (!patterns.uploadDir.test(dir) || dir.startsWith('/')) bad('dir must be one of the site\'s upload dirs');
+    const entry = audit.begin({ email: c.get('user').email, serverId: s.ref.id, action: 'uploads.download', target: name, detail: { dir } });
+    let stream;
+    try {
+      stream = await s.client.uploadsDownload(name, dir);
+    } catch (err) {
+      audit.rejected(entry, (err as Error).message);
+      throw err;
+    }
+    audit.succeeded(entry);
+    stream.done.catch((err: Error) => console.warn(`uploads download of ${name}/${dir} ended badly: ${err.message}`));
+    const stamp = new Date(now()).toISOString().replace(/[-:]/g, '').slice(0, 15) + 'Z';
+    const filename = `${name}-${dir.replace(/[^A-Za-z0-9.-]+/g, '-')}-${stamp}.tar.gz`;
+    return new Response(Readable.toWeb(stream.stdout) as ReadableStream, {
+      headers: { 'content-type': 'application/gzip', 'content-disposition': `attachment; filename="${filename}"`, 'cache-control': 'no-store' },
+    });
+  });
+
   srv.post('/sites/:name/db/snapshot', async (c) => {
     const s = c.get('server');
     const name = siteParam(c);

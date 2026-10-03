@@ -2,8 +2,8 @@
     "api_version": 1,
     "hostname": "web",
     "ddeploy": {
-        "sha": "dad5dca19b1f2dbcc1f27edfdf432ef74dc2b3d2",
-        "branch": "web-api"
+        "sha": "a2b75ebc1aa4783cc17cf4a27694d8ffe1b23735",
+        "branch": "main"
     },
     "base_domain": "staging.ddeploy.test",
     "php": {
@@ -35,6 +35,7 @@
         "db_backup_retention_days": "7"
     },
     "limits": {
-        "db_import_max_bytes": 2147483648
+        "db_import_max_bytes": 2147483648,
+        "uploads_import_max_bytes": 10737418240
     }
 }

@@ -76,6 +76,9 @@ export const KIND_LABELS: Record<string, string> = {
   'db-import': 'Database imported',
   'db-restore': 'Database restored',
   'db-snapshot': 'Database snapshot',
+  'uploads-import': 'Files uploaded',
+  'uploads-restore': 'Files restored',
+  'uploads-snapshot': 'Files snapshot',
 };
 
 export const kindLabel = (kind: string) => KIND_LABELS[kind] ?? (kind || 'Run');

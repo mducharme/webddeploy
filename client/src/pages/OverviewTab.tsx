@@ -5,7 +5,7 @@ import { useState } from 'react';
 import { Checks } from '../components/Checks.tsx';
 import { Commit, Trigger } from '../components/RunTable.tsx';
 import { Card, ErrorBox, PhaseBadge, Spinner, StatusDot } from '../components/ui.tsx';
-import { useDbInfo, useDoctor, useEnv, useInfo, useSiteRuns } from '../lib/api.ts';
+import { useDbInfo, useDoctor, useEnv, useInfo, useSiteRuns, useUploads } from '../lib/api.ts';
 import { duration, kindLabel, relativeTime } from '../lib/format.ts';
 import type { SiteTab } from './Site.tsx';
 import { RollbackButton } from './siteShared.tsx';
@@ -104,15 +104,17 @@ function NextSteps({ server, detail }: { server: string; detail: SiteDetailRespo
   const env = useEnv(server, name);
   const db = useDbInfo(server, name, !dismissed);
   const info = useInfo(server);
+  const uploads = useUploads(server, name);
   if (dismissed) return null;
 
   const hasEnv = env.data?.entries.some((e) => !e.managed) ?? false;
   const hasDb = (db.data?.table_count ?? 0) > 0;
   const hasDomain = (detail.config?.custom_domains.length ?? 0) > 0;
+  const hasFiles = uploads.data?.dirs.some((d) => (d.bytes ?? 0) > 0) ?? false;
   const steps: Array<{ done: boolean; title: string; text: string; tab?: SiteTab }> = [
     { done: hasEnv, title: 'Set environment variables', text: 'App keys, mail and API credentials — the .env every release shares.', tab: 'environment' },
     { done: hasDb, title: 'Import the database', text: 'Upload a dump (ddev export-db works). A snapshot is taken first.', tab: 'database' },
-    { done: false, title: 'Copy uploaded files', text: `rsync your local uploads to the server's persistent upload dirs (${detail.config?.upload_dirs.join(', ') || 'none declared'}) — see docs/new-project.md, step 3.` },
+    { done: hasFiles, title: 'Upload the files', text: `Drop the uploads folder (or a .zip/.tar.gz) into ${detail.config?.upload_dirs.join(', ') || 'its upload folder'}.`, tab: 'files' },
     { done: hasDomain, title: 'Add a custom domain (optional)', text: 'Point DNS at this server first, then add it in Settings and deploy.', tab: 'settings' },
     {
       done: false,

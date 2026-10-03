@@ -16,6 +16,13 @@ const ACTION_LABELS: Record<string, string> = {
   'db.import': 'imported a database into',
   'db.restore': 'restored a snapshot of',
   'db.snapshot': 'snapshotted the database of',
+  'uploads.import': 'uploaded files to',
+  'uploads.restore': 'restored files of',
+  'uploads.snapshot': 'snapshotted the files of',
+  'uploads.download': 'downloaded files of',
+  'preview.create': 'created a preview of',
+  'preview.deploy': 'redeployed a preview of',
+  'preview.remove': 'removed a preview of',
 };
 
 /** A short summary of an audit entry's detail (never values: the server only records key names). */
@@ -30,6 +37,9 @@ function describe(action: string, detail: unknown): string {
   if (action === 'settings.change' && 'branch' in d && d.branch !== undefined) parts.push(d.branch === null ? 'branch → default' : `branch → ${String(d.branch)}`);
   if (typeof d.snapshot === 'string') parts.push(d.snapshot);
   if (typeof d.filename === 'string') parts.push(d.filename);
+  if (typeof d.dir === 'string') parts.push(`${d.dir}${typeof d.mode === 'string' ? ` (${d.mode})` : ''}`);
+  if (typeof d.source === 'string') parts.push(d.source);
+  if (typeof d.branch === 'string' && action.startsWith('preview.')) parts.push(d.branch);
   if (typeof d.sha === 'string') parts.push(d.sha.slice(0, 7));
   return parts.join(' · ');
 }

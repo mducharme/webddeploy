@@ -100,12 +100,12 @@ const run = (o: Partial<Run>): Run => ({
 });
 
 describe('history filters', () => {
-  const runs = [run({}), run({ phase: 'failed' }), run({ kind: 'env-change' }), run({ kind: 'db-import' }), run({ phase: 'unknown', kind: 'rollback' })];
+  const runs = [run({}), run({ phase: 'failed' }), run({ kind: 'env-change' }), run({ kind: 'db-import' }), run({ kind: 'uploads-import' }), run({ phase: 'unknown', kind: 'rollback' })];
   it.each([
-    ['all', 5],
+    ['all', 6],
     ['failed', 2],
     ['deploys', 3],
-    ['database', 1],
+    ['data', 2],
     ['changes', 1],
   ] as const)('%s', (f, n) => expect(runs.filter(HISTORY_FILTERS[f].match)).toHaveLength(n));
 });

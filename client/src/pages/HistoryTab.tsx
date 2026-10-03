@@ -9,7 +9,7 @@ export const HISTORY_FILTERS = {
   all: { label: 'All', match: () => true },
   failed: { label: 'Failed', match: (r: Run) => r.phase === 'failed' || r.phase === 'unknown' },
   deploys: { label: 'Deploys', match: (r: Run) => ['deploy', 'rollback', 'provision'].includes(r.kind) },
-  database: { label: 'Database', match: (r: Run) => r.kind.startsWith('db-') },
+  data: { label: 'Data', match: (r: Run) => r.kind.startsWith('db-') || r.kind.startsWith('uploads-') },
   changes: { label: 'Config changes', match: (r: Run) => CHANGE_KINDS.has(r.kind) },
 } as const satisfies Record<string, { label: string; match: (r: Run) => boolean }>;
 export type HistoryFilter = keyof typeof HISTORY_FILTERS;

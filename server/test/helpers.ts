@@ -63,6 +63,7 @@ export class FakeConnector implements Connector {
       case 'env': return fixture('env');
       case 'settings': return fixture('site');
       case 'branches': return fixture('branches');
+      case 'uploads': return fixture('uploads');
       case 'commits': return fixture('commits');
       case 'db':
         if (args[1] === 'info') return fixture('db-info');

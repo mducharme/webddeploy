@@ -12,6 +12,7 @@ import {
   dbCredentialsResponse,
   dbInfoResponse,
   envResponse,
+  uploadsResponse,
   doctorResponse,
   eventsResponse,
   infoResponse,
@@ -48,6 +49,7 @@ const cases: Array<[string, z.ZodType]> = [
   ['db-credentials', dbCredentialsResponse],
   ['branches', branchesResponse],
   ['commits', commitsResponse],
+  ['uploads', uploadsResponse],
 ];
 
 describe('ddeploy api fixtures', () => {

@@ -1,0 +1,42 @@
+{
+    "api_version": 1,
+    "site": "testsite",
+    "target": "testsite",
+    "dirs": [
+        {
+            "dir": "private-uploads",
+            "path": "/home/deploy/persistent/testsite/private-uploads",
+            "exists": true,
+            "files": 1,
+            "bytes": 0
+        },
+        {
+            "dir": "web/uploads",
+            "path": "/home/deploy/persistent/testsite/web/uploads",
+            "exists": true,
+            "files": 4,
+            "bytes": 12
+        }
+    ],
+    "snapshots": [
+        {
+            "id": "20261003T023842Z-pre-import-web-uploads",
+            "dir": "web/uploads",
+            "reason": "pre-import",
+            "created_at": "2026-10-03T02:38:42Z"
+        },
+        {
+            "id": "20261003T023738Z-pre-restore-web-uploads",
+            "dir": "web/uploads",
+            "reason": "pre-restore",
+            "created_at": "2026-10-03T02:37:38Z"
+        },
+        {
+            "id": "20261003T023736Z-pre-import-web-uploads",
+            "dir": "web/uploads",
+            "reason": "pre-import",
+            "created_at": "2026-10-03T02:37:36Z"
+        }
+    ],
+    "max_bytes": 10737418240
+}

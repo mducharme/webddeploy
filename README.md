@@ -33,6 +33,12 @@ What it's for:
   details (with the SSH tunnel command), download a dump, import one
   (with an upload progress bar), and use snapshots. Every import or
   restore takes one first, so it can be undone.
+- **Upload files.** In each site's Files tab, drop a folder or a
+  `.zip`/`.tar.gz` onto an upload folder, then merge it in or replace the
+  folder. Folders are packed into a tar in the browser and sent as a
+  single upload, even with thousands of files. Each upload snapshots the
+  folder first, so it can be undone, and folders can be downloaded as a
+  `.tar.gz`.
 - **Know who did what.** The Activity page lists every action taken from
   the web. ddeploy's own history also records web actions as
   `web (<email>)`.

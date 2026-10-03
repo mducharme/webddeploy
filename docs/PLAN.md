@@ -433,11 +433,11 @@ webddeploy 81 shared + 87 server + 50 client.
 
 ### Next
 
-- **Uploads (files):** syncing local uploads to a new staging site is
-  still rsync. A web upload or archive import into `upload_dirs` would
-  close the last gap in "create a staging site".
-- **Previews from the UI:** create, redeploy and remove a branch preview.
-  The verbs exist in ddeploy; the api allowlist doesn't include them yet.
+- ~~Uploads (files)~~: done. The Files tab handles folder drag-and-drop
+  and archives, merge or replace, snapshots and download.
+- ~~Previews from the UI~~: done. Creating one also exposed and fixed a
+  ddeploy bug that dropped the parent's database when an isolated preview
+  was removed.
 - **Read-only SQL console:** needs a read-only DB user per site (ddeploy
   doesn't create one), so it isn't done with the site's own user.
 - **Notifications:** per-site Slack channel settings (`notify`), whose
