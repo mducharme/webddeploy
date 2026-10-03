@@ -81,16 +81,34 @@ export function SitePage() {
   );
 }
 
+/** What an empty log is, by kind: an error log with nothing in it is good news. */
+export function emptyLogText(name: string): string {
+  if (name.endsWith('.error') || name.endsWith('_error')) return 'No errors logged yet — new ones appear here as they happen.';
+  if (name.endsWith('.access') || name.endsWith('_access')) return 'No requests logged yet — they appear here as they come in.';
+  return 'Nothing logged yet — new lines appear here as they are written.';
+}
+
 /** Follows one log live. */
 export function LogStream({ server, name, title }: { server: string; name: string; title?: ReactNode }) {
+  const [attempt, setAttempt] = useState(0);
+  return <LogStreamInner key={attempt} server={server} name={name} title={title} onReconnect={() => setAttempt((n) => n + 1)} />;
+}
+
+function LogStreamInner({ server, name, title, onReconnect }: { server: string; name: string; title?: ReactNode; onReconnect: () => void }) {
   const stream = useOutputStream(logStreamUrl(server, name));
+  const lost = !stream.connected && !stream.ended && (stream.loaded || !!stream.error);
   return (
     <Card
       title={title ?? <>Log: <Mono>{name}</Mono></>}
-      actions={<span className="flex items-center gap-1.5 text-xs text-stone-500"><StatusDot status={stream.connected ? 'ok' : 'off'} />{stream.connected ? 'following' : 'disconnected'}</span>}
+      actions={
+        <span className="flex items-center gap-2 text-xs text-stone-500">
+          <span className="flex items-center gap-1.5"><StatusDot status={stream.connected ? 'ok' : 'off'} />{stream.connected ? 'following' : stream.loaded || stream.error ? 'disconnected' : 'connecting…'}</span>
+          {lost && <Button variant="ghost" onClick={onReconnect}>Reconnect</Button>}
+        </span>
+      }
     >
-      {stream.error && <ErrorBox error={stream.error} />}
-      <LogView text={stream.text} placeholder="Waiting for the log…" className="rounded-b-lg" />
+      {stream.error && <ErrorBox error={stream.error} title="Couldn't read the log" />}
+      <LogView text={stream.text} placeholder={stream.loaded ? emptyLogText(name) : 'Loading the log…'} className="rounded-b-lg" />
     </Card>
   );
 }

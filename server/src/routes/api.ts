@@ -315,7 +315,14 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
     const lines = intQuery(c, 'lines', 200, 5000);
     return streamSSE(c, async (stream) => {
       const beat = heartbeat(stream);
-      const first = await s.client.log(name, { lines });
+      let first;
+      try {
+        first = await s.client.log(name, { lines });
+      } catch (err) {
+        // Said, not just a closed stream: the page shows why.
+        await stream.writeSSE({ event: 'error', data: JSON.stringify({ message: (err as Error).message }) });
+        return;
+      }
       await sendChunk(stream, first);
       let offset = first.next_offset;
       while (!stream.aborted) {

@@ -29,3 +29,14 @@ describe('nextStep', () => {
     ['ready', t({ files: 3, bytes: 26 }), 'copy'],
   ] as const)('%s → %s', (_, test, step) => expect(nextStep(test)).toBe(step));
 });
+
+import { emptyLogText } from '../src/pages/Site.tsx';
+
+describe('emptyLogText', () => {
+  it.each([
+    ['testsite.error', 'No errors logged yet'],
+    ['nginx_error', 'No errors logged yet'],
+    ['testsite.access', 'No requests logged yet'],
+    ['testsite', 'Nothing logged yet'],
+  ])('%s → %s', (name, text) => expect(emptyLogText(name)).toContain(text));
+});

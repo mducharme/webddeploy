@@ -74,3 +74,17 @@ describe('copy from another server', () => {
     expect(audit.list()[0]).toMatchObject({ action: 'fetch.forget-host' });
   });
 });
+
+describe('log streams', () => {
+  it('a log that can\'t be read says why, instead of closing silently', async () => {
+    const { req, connector } = makeApp();
+    connector.on('logs', () => {
+      throw new Error("couldn't read /var/log/nginx/testsite.error.log");
+    });
+    const ctrl = new AbortController();
+    const res = await req('/api/servers/local/logs/testsite.error/stream', { signal: ctrl.signal });
+    const text = await res.text();
+    expect(text).toContain('event: error');
+    expect(text).toContain("couldn't read");
+  });
+});

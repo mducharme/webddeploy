@@ -15,6 +15,8 @@ export interface StreamState {
   ended: boolean;
   error: string | null;
   connected: boolean;
+  /** The first read arrived (possibly empty): "nothing yet" from here on means the log is empty, not loading. */
+  loaded: boolean;
 }
 
 /**
@@ -24,11 +26,11 @@ export interface StreamState {
  * so nothing is shown twice.
  */
 export function useOutputStream(url: string | null, opts: { resumable?: boolean } = {}): StreamState {
-  const [state, setState] = useState<StreamState>({ text: '', run: null, ended: false, error: null, connected: false });
+  const [state, setState] = useState<StreamState>({ text: '', run: null, ended: false, error: null, connected: false, loaded: false });
   const offset = useRef(0);
 
   useEffect(() => {
-    setState({ text: '', run: null, ended: false, error: null, connected: false });
+    setState({ text: '', run: null, ended: false, error: null, connected: false, loaded: false });
     offset.current = 0;
     if (!url) return;
     let es: EventSource | null = null;
@@ -45,7 +47,7 @@ export function useOutputStream(url: string | null, opts: { resumable?: boolean 
         setState((s) => {
           let text = (d.rotated ? '' : s.text) + stripAnsi(d.text);
           if (text.length > MAX_TEXT) text = text.slice(text.length - MAX_TEXT);
-          return { ...s, text };
+          return { ...s, text, loaded: true };
         });
       });
       es.addEventListener('run', (e) => {
