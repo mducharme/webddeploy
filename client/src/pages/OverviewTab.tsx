@@ -4,7 +4,7 @@ import { CheckCircle2, Circle, X } from 'lucide-react';
 import { useState } from 'react';
 import { Checks } from '../components/Checks.tsx';
 import { Commit, Trigger } from '../components/RunTable.tsx';
-import { Card, ErrorBox, PhaseBadge, Spinner, StatusDot } from '../components/ui.tsx';
+import { Card, ErrorBox, PhaseBadge, Spinner, StatusDot, Mono } from '../components/ui.tsx';
 import { useDbInfo, useDoctor, useEnv, useInfo, useSiteRuns, useUploads } from '../lib/api.ts';
 import { duration, kindLabel, relativeTime } from '../lib/format.ts';
 import type { SiteTab } from './Site.tsx';
@@ -49,6 +49,11 @@ export function OverviewTab({ server, detail }: { server: string; detail: SiteDe
           <p className="text-xs uppercase tracking-wide text-stone-500">Live</p>
           <p className="mt-2 text-sm text-stone-500">{detail.site.branch ?? 'detached'}</p>
           <Commit sha={detail.site.sha} repo={detail.site.repo} subject={detail.site.subject} />
+          <p className="mt-1 text-xs text-stone-500" data-testid="stack">
+            PHP {detail.site.php ?? '?'}
+            {detail.site.node && <> · Node {detail.site.node}{detail.site.build && ' (build)'}</>}
+            {detail.site.docroot && <> · docroot <Mono>{detail.site.docroot}</Mono></>}
+          </p>
           {detail.deploy_branch && detail.deploy_branch !== detail.site.branch && (
             <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">Switches to {detail.deploy_branch} on the next deploy.</p>
           )}

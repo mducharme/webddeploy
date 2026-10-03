@@ -104,7 +104,7 @@ export function Fleet() {
           <Empty>{query || view !== 'all' ? (view === 'attention' ? 'Nothing needs attention.' : 'No site matches.') : 'No sites provisioned yet.'}</Empty>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[56rem]">
+            <table className="w-full min-w-[48rem]">
               <thead className="border-b border-stone-200 dark:border-stone-800">
                 <tr>
                   <Th className="w-8" />
@@ -112,7 +112,6 @@ export function Fleet() {
                   <Th>Live</Th>
                   <Th>Deployed</Th>
                   <Th>Last run</Th>
-                  <Th>Stack</Th>
                   <Th className="text-right">Actions</Th>
                 </tr>
               </thead>
@@ -189,10 +188,6 @@ function SiteRow({ server, site, previews, nested, status }: { server: string; s
         ) : (
           <span className="text-sm text-stone-400">no history yet</span>
         )}
-      </Td>
-      <Td className="whitespace-nowrap text-xs text-stone-600 dark:text-stone-400">
-        PHP {site.php ?? '?'}
-        {site.node && <> · Node {site.node}{site.build && ' (build)'}</>}
       </Td>
       <Td className="text-right">
         {!site.preview && canDeploy && (
