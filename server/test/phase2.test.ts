@@ -280,3 +280,56 @@ describe('uploads', () => {
     expect(connector.calls).toContainEqual(['uploads', 'download', 'testsite', '--dir', 'web/uploads']);
   });
 });
+
+describe('backups', () => {
+  it('reports dumps, the file mirror and versions', async () => {
+    const { req } = makeApp();
+    const body = await json(await req(`${site}/backups`));
+    expect(body.database.dumps.length).toBeGreaterThan(0);
+    expect(body.uploads.mirror.map((m: { dir: string }) => m.dir)).toContain('web/uploads');
+  });
+
+  it('backs up now, database or files', async () => {
+    const { req, connector, audit } = makeApp();
+    expect((await req(`${site}/backups/run`, { method: 'POST', body: JSON.stringify({ what: 'database' }) })).status).toBe(202);
+    expect((await req(`${site}/backups/run`, { method: 'POST', body: JSON.stringify({ what: 'uploads' }) })).status).toBe(202);
+    expect((await req(`${site}/backups/run`, { method: 'POST', body: JSON.stringify({ what: 'everything' }) })).status).toBe(400);
+    expect(connector.calls).toContainEqual(['run', 'start', 'backup-database', 'testsite', '--actor', ADMIN]);
+    expect(connector.calls).toContainEqual(['run', 'start', 'backup-uploads', 'testsite', '--actor', ADMIN]);
+    expect(audit.list().map((e) => e.action)).toEqual(['backup.uploads', 'backup.database']);
+  });
+
+  it('restores the database from a dump, validating its name', async () => {
+    const { req, connector } = makeApp();
+    expect((await req(`${site}/backups/restore-db`, { method: 'POST', body: JSON.stringify({ file: '../../etc/passwd' }) })).status).toBe(400);
+    expect((await req(`${site}/backups/restore-db`, { method: 'POST', body: JSON.stringify({ file: 'testsite-20261003-025058.sql.gz' }) })).status).toBe(202);
+    expect(connector.calls).toContainEqual(['run', 'start', 'backup-restore-db', 'testsite', '--file', 'testsite-20261003-025058.sql.gz', '--actor', ADMIN]);
+  });
+
+  it('restores files from the mirror or one version', async () => {
+    const { req, connector } = makeApp();
+    await req(`${site}/backups/restore-uploads`, { method: 'POST', body: JSON.stringify({ dir: 'web/uploads' }) });
+    await req(`${site}/backups/restore-uploads`, { method: 'POST', body: JSON.stringify({ dir: 'web/uploads', version: '20261003T025057Z' }) });
+    expect(connector.calls).toContainEqual(['run', 'start', 'backup-restore-uploads', 'testsite', '--dir', 'web/uploads', '--actor', ADMIN]);
+    expect(connector.calls).toContainEqual(['run', 'start', 'backup-restore-uploads', 'testsite', '--dir', 'web/uploads', '--version', '20261003T025057Z', '--actor', ADMIN]);
+    expect((await req(`${site}/backups/restore-uploads`, { method: 'POST', body: JSON.stringify({ dir: '/etc' }) })).status).toBe(400);
+    expect((await req(`${site}/backups/restore-uploads`, { method: 'POST', body: JSON.stringify({ dir: 'web/uploads', version: 'yesterday' }) })).status).toBe(400);
+  });
+
+  it('keeps, unkeeps and deletes dumps, audited', async () => {
+    const { req, connector, audit } = makeApp();
+    for (const action of ['keep', 'unkeep', 'delete']) {
+      const res = await req(`${site}/backups/${action}`, { method: 'POST', body: JSON.stringify({ file: 'testsite-20261003-025058.sql.gz' }) });
+      expect(res.status).toBe(200);
+    }
+    expect(connector.calls).toContainEqual(['backups', 'delete', 'testsite', '--file', 'testsite-20261003-025058.sql.gz', '--actor', ADMIN]);
+    expect(audit.list().map((e) => e.action)).toEqual(['backup.delete', 'backup.unkeep', 'backup.keep']);
+  });
+
+  it('downloads a dump', async () => {
+    const { req, connector } = makeApp();
+    const res = await req(`${site}/backups/download?file=testsite-20261003-025058.sql.gz`);
+    expect(res.headers.get('content-disposition')).toBe('attachment; filename="testsite-20261003-025058.sql.gz"');
+    expect(connector.calls).toContainEqual(['backups', 'download', 'testsite', '--file', 'testsite-20261003-025058.sql.gz']);
+  });
+});

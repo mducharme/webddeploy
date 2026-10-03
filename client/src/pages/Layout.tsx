@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useParams } from '@tanstack/react-router';
-import { Activity, FileText, HeartPulse, LayoutGrid, LogOut, Plus } from 'lucide-react';
+import { Activity, Archive, FileText, HeartPulse, LayoutGrid, LogOut, Plus } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { ApiError, api, signOut, useMe } from '../lib/api.ts';
 import { Button, ErrorBox, Spinner } from '../components/ui.tsx';
@@ -46,6 +46,7 @@ function Shell({ children }: { children: ReactNode }) {
             <NavLink to="/s/$server" params={{ server }} icon={<LayoutGrid className="size-4" />}>Sites</NavLink>
             <NavLink to="/s/$server/status" params={{ server }} icon={<HeartPulse className="size-4" />}>Status</NavLink>
             <NavLink to="/s/$server/logs" params={{ server }} icon={<FileText className="size-4" />}>Logs</NavLink>
+            <NavLink to="/s/$server/backups" params={{ server }} icon={<Archive className="size-4" />}>Backups</NavLink>
             <NavLink to="/activity" icon={<Activity className="size-4" />}>Activity</NavLink>
           </nav>
           <Link to="/s/$server/provision" params={{ server }}>

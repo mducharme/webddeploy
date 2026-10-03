@@ -22,12 +22,13 @@ import {
   siteDetailResponse,
   sitesResponse,
   uploadsResponse,
+  backupsResponse,
   previewCreateFlags,
   type PreviewCreateRequest,
   type ProvisionRequestParsed,
 } from '@webddeploy/shared';
 import type { Readable } from 'node:stream';
-import type { z } from 'zod';
+import { z } from 'zod';
 import { DdeployError, type CallOptions, type Connector, type RawStream } from './connector.ts';
 
 export interface ReadOptions {
@@ -225,4 +226,30 @@ export class DdeployClient {
   uploadsDownload(site: string, dir: string): Promise<RawStream> {
     return this.connector.stream(['uploads', 'download', site, '--dir', dir]);
   }
+
+  backups(site: string) {
+    return this.call(backupsResponse, ['backups', site], { timeoutMs: 180_000 });
+  }
+
+  startBackup(site: string, actor: string, what: 'database' | 'uploads') {
+    return this.call(runStartResponse, ['run', 'start', `backup-${what}`, site, '--actor', actor]);
+  }
+
+  startBackupRestoreDb(site: string, actor: string, file: string) {
+    return this.call(runStartResponse, ['run', 'start', 'backup-restore-db', site, '--file', file, '--actor', actor]);
+  }
+
+  startBackupRestoreUploads(site: string, actor: string, dir: string, version?: string | null) {
+    return this.call(runStartResponse, ['run', 'start', 'backup-restore-uploads', site, '--dir', dir, ...(version ? ['--version', version] : []), '--actor', actor]);
+  }
+
+  manageBackup(site: string, actor: string, action: 'keep' | 'unkeep' | 'delete', file: string) {
+    return this.call(backupManageResponse, ['backups', action, site, '--file', file, '--actor', actor]);
+  }
+
+  backupDownload(site: string, file: string): Promise<RawStream> {
+    return this.connector.stream(['backups', 'download', site, '--file', file]);
+  }
 }
+
+const backupManageResponse = runStartResponse.pick({ api_version: true }).extend({ file: z.string(), action: z.string() });

@@ -2,7 +2,7 @@
     "api_version": 1,
     "hostname": "web",
     "ddeploy": {
-        "sha": "a2b75ebc1aa4783cc17cf4a27694d8ffe1b23735",
+        "sha": "705eb28504058134992ffba8ab0ed0bfb351a861",
         "branch": "main"
     },
     "base_domain": "staging.ddeploy.test",
@@ -37,5 +37,18 @@
     "limits": {
         "db_import_max_bytes": 2147483648,
         "uploads_import_max_bytes": 10737418240
+    },
+    "backups": {
+        "bucket": "ddeploy-test",
+        "database": {
+            "enabled": true,
+            "schedule": "23 * * * *",
+            "retention_days": 7
+        },
+        "uploads": {
+            "enabled": true,
+            "schedule": "17 * * * *",
+            "versions_days": 30
+        }
     }
 }

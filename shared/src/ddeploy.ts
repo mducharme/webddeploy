@@ -56,6 +56,13 @@ export const infoResponse = z.object({
     .object({ client_max_body_size: z.string(), fpm_max_children: z.string(), db_backup_retention_days: z.string() })
     .optional(),
   limits: z.object({ db_import_max_bytes: z.number(), uploads_import_max_bytes: z.number().optional() }).optional(),
+  backups: z
+    .object({
+      bucket: nullableString,
+      database: z.object({ enabled: z.boolean(), schedule: z.string(), retention_days: z.number().nullable() }),
+      uploads: z.object({ enabled: z.boolean(), schedule: z.string(), versions_days: z.number().nullable() }),
+    })
+    .optional(),
 });
 export type InfoResponse = z.infer<typeof infoResponse>;
 
@@ -82,6 +89,7 @@ export const siteSummary = z.object({
   last_deploy: ddeployEvent.nullable().optional(),
   /** When the live code went live. */
   deployed_at: nullableString.optional(),
+  last_backups: z.object({ database: ddeployEvent.nullable(), uploads: ddeployEvent.nullable() }).optional(),
 });
 export type SiteSummary = z.infer<typeof siteSummary>;
 
@@ -333,6 +341,37 @@ export const uploadsResponse = z.object({
 });
 export type UploadsResponse = z.infer<typeof uploadsResponse>;
 
+export const backupDump = z.object({ file: z.string(), bytes: z.number().nullable(), created_at: nullableString, kept: z.boolean() });
+export type BackupDump = z.infer<typeof backupDump>;
+
+export const backupsResponse = z.object({
+  ...versioned,
+  site: z.string(),
+  /** The site whose backups these are: a shared-mode preview's parent. */
+  target: z.string(),
+  shared_with_parent: z.boolean(),
+  configured: z.boolean(),
+  bucket: nullableString,
+  error: nullableString,
+  database: z.object({
+    enabled: z.boolean(),
+    schedule: z.string(),
+    retention_days: z.number().nullable(),
+    retention_source: z.enum(['site', 'server']),
+    dumps: z.array(backupDump),
+    last_run: ddeployEvent.nullable(),
+  }),
+  uploads: z.object({
+    enabled: z.boolean(),
+    schedule: z.string(),
+    versions_days: z.number().nullable(),
+    mirror: z.array(z.object({ dir: z.string(), files: z.number().nullable(), bytes: z.number().nullable() })),
+    versions: z.array(z.object({ id: z.string(), created_at: z.string(), dirs: z.array(z.string()) })),
+    last_run: ddeployEvent.nullable(),
+  }),
+});
+export type BackupsResponse = z.infer<typeof backupsResponse>;
+
 export const runCancelResponse = z.object({ ...versioned, run_id: z.string(), cancelled: z.boolean() });
 
 export const apiErrorResponse = z.object({
@@ -359,6 +398,8 @@ export const patterns = {
   logName: /^([a-z0-9][a-z0-9-]{0,27}(\.(access|error))?|nginx_(access|error)|php[0-9]\.[0-9]{1,2}_fpm)$/,
   snapshotId: /^[0-9]{8}T[0-9]{6}Z-[a-z][a-z-]{0,19}$/,
   uploadsSnapshotId: /^[0-9]{8}T[0-9]{6}Z-[a-z0-9-]{1,40}$/,
+  backupDump: /^[A-Za-z0-9][A-Za-z0-9_.-]{0,200}\.sql(\.gz)?$/,
+  uploadsVersion: /^[0-9]{8}T[0-9]{6}Z$/,
   sha: /^[0-9a-f]{7,40}$/,
   envKey: /^[A-Za-z_][A-Za-z0-9_]*$/,
 } as const;

@@ -23,6 +23,14 @@ const ACTION_LABELS: Record<string, string> = {
   'preview.create': 'created a preview of',
   'preview.deploy': 'redeployed a preview of',
   'preview.remove': 'removed a preview of',
+  'backup.database': 'backed up the database of',
+  'backup.uploads': 'backed up the files of',
+  'backup.restore-db': 'restored the database of',
+  'backup.restore-uploads': 'restored files of',
+  'backup.keep': 'kept a backup of',
+  'backup.unkeep': 'stopped keeping a backup of',
+  'backup.delete': 'deleted a backup of',
+  'backup.download': 'downloaded a backup of',
 };
 
 /** A short summary of an audit entry's detail (never values: the server only records key names). */
@@ -37,6 +45,8 @@ function describe(action: string, detail: unknown): string {
   if (action === 'settings.change' && 'branch' in d && d.branch !== undefined) parts.push(d.branch === null ? 'branch → default' : `branch → ${String(d.branch)}`);
   if (typeof d.snapshot === 'string') parts.push(d.snapshot);
   if (typeof d.filename === 'string') parts.push(d.filename);
+  if (typeof d.file === 'string') parts.push(d.file);
+  if (typeof d.version === 'string') parts.push(`version ${d.version}`);
   if (typeof d.dir === 'string') parts.push(`${d.dir}${typeof d.mode === 'string' ? ` (${d.mode})` : ''}`);
   if (typeof d.source === 'string') parts.push(d.source);
   if (typeof d.branch === 'string' && action.startsWith('preview.')) parts.push(d.branch);

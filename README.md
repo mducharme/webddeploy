@@ -39,6 +39,12 @@ What it's for:
   single upload, even with thousands of files. Each upload snapshots the
   folder first, so it can be undone, and folders can be downloaded as a
   `.tar.gz`.
+- **Manage backups.** Each site has a Backups tab: last backups and
+  schedules, database dumps (download, restore, keep forever, delete),
+  restoring a file folder from the backup, and versions that bring back
+  files a backup run saw changed or deleted. There's also "back up now"
+  and dump retention. The Backups page in the top bar shows every site's
+  last backups, and what failed.
 - **Know who did what.** The Activity page lists every action taken from
   the web. ddeploy's own history also records web actions as
   `web (<email>)`.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { commitUrl, dateTime, duration, kindLabel, relativeTime, shortSha } from '../src/lib/format.ts';
+import { commitUrl, cronLabel, dateTime, duration, kindLabel, relativeTime, shortSha } from '../src/lib/format.ts';
 import { stripAnsi } from '../src/lib/stream.ts';
 
 describe('commitUrl', () => {
@@ -56,4 +56,14 @@ describe('dateTime', () => {
     expect(kindLabel('')).toBe('Run');
     expect(kindLabel('db-import')).toBe('Database imported');
   });
+});
+
+describe('cronLabel', () => {
+  it.each([
+    ['17 * * * *', 'hourly at :17'],
+    ['5 3 * * *', 'daily at 03:05 (server time)'],
+    ['*/15 * * * *', 'every 15 minutes'],
+    ['0 4 * * 1', '0 4 * * 1'],
+    ['nonsense', 'nonsense'],
+  ])('%s', (expr, expected) => expect(cronLabel(expr)).toBe(expected));
 });

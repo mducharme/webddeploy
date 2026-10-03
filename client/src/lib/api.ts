@@ -4,6 +4,7 @@ import type {
   DbCredentialsResponse,
   DbInfoResponse,
   UploadsResponse,
+  BackupsResponse,
   EnvChangeRequest,
   EnvEntry,
   SettingsRequest,
@@ -65,6 +66,7 @@ export const keys = {
   env: (s: string, n: string) => ['env', s, n] as const,
   db: (s: string, n: string) => ['db', s, n] as const,
   uploads: (s: string, n: string) => ['uploads', s, n] as const,
+  backups: (s: string, n: string) => ['backups', s, n] as const,
   branches: (s: string, n: string) => ['branches', s, n] as const,
   commits: (s: string, n: string, from: string, to: string) => ['commits', s, n, from, to] as const,
 };
@@ -246,6 +248,25 @@ export const useUploads = (server: string, name: string) =>
 
 export const uploadsDownloadUrl = (server: string, name: string, dir: string) =>
   `${base(server)}/sites/${name}/uploads/download?dir=${encodeURIComponent(dir)}`;
+
+export const useBackups = (server: string, name: string) =>
+  useQuery({ queryKey: keys.backups(server, name), queryFn: () => api<BackupsResponse>(`${base(server)}/sites/${name}/backups`), staleTime: 30_000 });
+
+export const backupDownloadUrl = (server: string, name: string, file: string) =>
+  `${base(server)}/sites/${name}/backups/download?file=${encodeURIComponent(file)}`;
+
+export const useBackupNow = (server: string) => useStartRun(server, (site) => `/sites/${site}/backups/run`);
+export const useBackupRestoreDb = (server: string) => useStartRun(server, (site) => `/sites/${site}/backups/restore-db`);
+export const useBackupRestoreUploads = (server: string) => useStartRun(server, (site) => `/sites/${site}/backups/restore-uploads`);
+
+export function useManageBackup(server: string, name: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ action, file }: { action: 'keep' | 'unkeep' | 'delete'; file: string }) =>
+      api<{ file: string; action: string }>(`${base(server)}/sites/${name}/backups/${action}`, { method: 'POST', body: JSON.stringify({ file }) }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.backups(server, name) }),
+  });
+}
 
 export const useUploadsRestore = (server: string) => useStartRun(server, (site) => `/sites/${site}/uploads/restore`);
 export const useUploadsSnapshot = (server: string) => useStartRun(server, (site) => `/sites/${site}/uploads/snapshot`);

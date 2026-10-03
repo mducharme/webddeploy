@@ -79,6 +79,23 @@ export const KIND_LABELS: Record<string, string> = {
   'uploads-import': 'Files uploaded',
   'uploads-restore': 'Files restored',
   'uploads-snapshot': 'Files snapshot',
+  'backup-database': 'Database backup',
+  'backup-uploads': 'Files backup',
+  'backup-keep': 'Backup kept',
+  'backup-unkeep': 'Backup no longer kept',
+  'backup-delete': 'Backup deleted',
 };
+
+/** A readable form of the cron schedules ddeploy uses ("17 * * * *" -> "hourly at :17"). */
+export function cronLabel(expr: string): string {
+  const f = expr.trim().split(/\s+/);
+  if (f.length !== 5) return expr;
+  const [m, h, dom, mon, dow] = f;
+  const num = (x: string | undefined) => /^\d+$/.test(x ?? '');
+  if (num(m) && h === '*' && dom === '*' && mon === '*' && dow === '*') return `hourly at :${m!.padStart(2, '0')}`;
+  if (num(m) && num(h) && dom === '*' && mon === '*' && dow === '*') return `daily at ${h!.padStart(2, '0')}:${m!.padStart(2, '0')} (server time)`;
+  if (/^\*\/\d+$/.test(m!) && h === '*' && dom === '*' && mon === '*' && dow === '*') return `every ${m!.slice(2)} minutes`;
+  return expr;
+}
 
 export const kindLabel = (kind: string) => KIND_LABELS[kind] ?? (kind || 'Run');

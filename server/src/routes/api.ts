@@ -469,6 +469,81 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
     }, c);
   });
 
+  // --- backups (object storage) ---------------------------------------------
+
+  srv.get('/sites/:name/backups', async (c) => c.json(await c.get('server').client.backups(siteParam(c))));
+
+  srv.post('/sites/:name/backups/run', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const body = z.object({ what: z.enum(['database', 'uploads']) }).safeParse(await c.req.json().catch(() => null));
+    if (!body.success) bad('what: database or uploads');
+    return audited(user.email, s.ref.id, `backup.${body.data.what}`, name, undefined, async () => {
+      const { run_id } = await s.client.startBackup(name, user.email, body.data.what);
+      return { body: { run_id }, runId: run_id, status: 202 };
+    }, c);
+  });
+
+  srv.post('/sites/:name/backups/restore-db', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const body = z.object({ file: z.string().regex(patterns.backupDump) }).safeParse(await c.req.json().catch(() => null));
+    if (!body.success) bad('file: a backup dump name');
+    return audited(user.email, s.ref.id, 'backup.restore-db', name, { file: body.data.file }, async () => {
+      const { run_id } = await s.client.startBackupRestoreDb(name, user.email, body.data.file);
+      return { body: { run_id }, runId: run_id, status: 202 };
+    }, c);
+  });
+
+  srv.post('/sites/:name/backups/restore-uploads', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const body = z
+      .object({ dir: z.string().regex(patterns.uploadDir).refine((d) => !d.startsWith('/')), version: z.string().regex(patterns.uploadsVersion).nullish() })
+      .safeParse(await c.req.json().catch(() => null));
+    if (!body.success) bad('dir: an upload dir; version: a backup run id');
+    return audited(user.email, s.ref.id, 'backup.restore-uploads', name, body.data, async () => {
+      const { run_id } = await s.client.startBackupRestoreUploads(name, user.email, body.data.dir, body.data.version);
+      return { body: { run_id }, runId: run_id, status: 202 };
+    }, c);
+  });
+
+  for (const action of ['keep', 'unkeep', 'delete'] as const) {
+    srv.post(`/sites/:name/backups/${action}`, async (c) => {
+      const s = c.get('server');
+      const name = siteParam(c);
+      const user = c.get('user');
+      const body = z.object({ file: z.string().regex(patterns.backupDump) }).safeParse(await c.req.json().catch(() => null));
+      if (!body.success) bad('file: a backup dump name');
+      return audited(user.email, s.ref.id, `backup.${action}`, name, { file: body.data.file }, async () => ({
+        body: await s.client.manageBackup(name, user.email, action, body.data.file),
+      }), c);
+    });
+  }
+
+  srv.get('/sites/:name/backups/download', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const file = c.req.query('file') ?? '';
+    if (!patterns.backupDump.test(file)) bad('file: a backup dump name');
+    const entry = audit.begin({ email: c.get('user').email, serverId: s.ref.id, action: 'backup.download', target: name, detail: { file } });
+    let stream;
+    try {
+      stream = await s.client.backupDownload(name, file);
+    } catch (err) {
+      audit.rejected(entry, (err as Error).message);
+      throw err;
+    }
+    audit.succeeded(entry);
+    stream.done.catch((err: Error) => console.warn(`backup download ${name}/${file} ended badly: ${err.message}`));
+    return new Response(Readable.toWeb(stream.stdout) as ReadableStream, {
+      headers: { 'content-type': file.endsWith('.gz') ? 'application/gzip' : 'application/sql', 'content-disposition': `attachment; filename="${file}"`, 'cache-control': 'no-store' },
+    });
+  });
+
   // --- uploads (files) -----------------------------------------------------
 
   srv.get('/sites/:name/uploads', async (c) => c.json(await c.get('server').client.uploads(siteParam(c))));

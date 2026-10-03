@@ -8,6 +8,7 @@ import { Commit } from '../components/RunTable.tsx';
 import { DatabaseTab } from './DatabaseTab.tsx';
 import { EnvTab } from './EnvTab.tsx';
 import { FilesTab } from './FilesTab.tsx';
+import { BackupsTab } from './BackupsTab.tsx';
 import { HistoryTab } from './HistoryTab.tsx';
 import { OverviewTab } from './OverviewTab.tsx';
 import { SettingsTab } from './SettingsTab.tsx';
@@ -18,7 +19,7 @@ import { logStreamUrl, useDoctor, useLogs, useSite } from '../lib/api.ts';
 import { relativeTime } from '../lib/format.ts';
 import { useOutputStream } from '../lib/stream.ts';
 
-export const SITE_TABS = ['overview', 'history', 'environment', 'settings', 'database', 'files', 'previews', 'logs', 'health', 'config'] as const;
+export const SITE_TABS = ['overview', 'history', 'environment', 'settings', 'database', 'files', 'backups', 'previews', 'logs', 'health', 'config'] as const;
 export type SiteTab = (typeof SITE_TABS)[number];
 
 export function SitePage() {
@@ -66,6 +67,7 @@ export function SitePage() {
       {tab === 'settings' && <SettingsTab server={server} detail={d} />}
       {tab === 'database' && <DatabaseTab server={server} name={name} />}
       {tab === 'files' && <FilesTab server={server} name={name} />}
+      {tab === 'backups' && <BackupsTab server={server} name={name} />}
       {tab === 'previews' && <PreviewsTab server={server} project={name} repo={s.repo} />}
       {tab === 'logs' && <SiteLog server={server} name={name} />}
       {tab === 'health' && <HealthTab server={server} name={name} />}

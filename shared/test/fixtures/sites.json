@@ -11,51 +11,66 @@
             "docroot": "web",
             "db": "testsite",
             "branch": "main",
-            "sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
-            "committed_at": "2026-10-02T17:39:15+00:00",
+            "sha": "33609ebcbc8639c2778457d0c0338df7b05d7e50",
+            "committed_at": "2026-10-03T02:48:18+00:00",
             "subject": "add a hooks.post-start step that clones a private repo",
             "repo": "ssh://gitfixture@127.0.0.1/srv/git/testsite.git",
             "preview": null,
             "last_event": {
-                "ts": "2026-10-03T00:35:43Z",
-                "run_id": "20261003T003542Z-4ee6fa",
+                "ts": "2026-10-03T02:51:39Z",
+                "run_id": null,
                 "site": "testsite",
-                "kind": "deploy",
+                "kind": "backup-delete",
                 "phase": "succeeded",
-                "trigger": "manual",
-                "from_sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
-                "to_sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
-                "subject": "add a hooks.post-start step that clones a private repo",
-                "branch": "main",
-                "duration_s": 1
+                "trigger": "web (a@b.c)",
+                "subject": "testsite-20261003-025135.sql.gz"
             },
             "last_run": {
-                "ts": "2026-10-03T00:35:43Z",
-                "run_id": "20261003T003542Z-4ee6fa",
+                "ts": "2026-10-03T02:51:37Z",
+                "run_id": "20261003T025137Z-e2ec91",
                 "site": "testsite",
-                "kind": "deploy",
+                "kind": "db-restore",
                 "phase": "succeeded",
-                "trigger": "manual",
-                "from_sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
-                "to_sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
-                "subject": "add a hooks.post-start step that clones a private repo",
-                "branch": "main",
-                "duration_s": 1
+                "trigger": "web (a@b.c)",
+                "subject": "backup testsite-20261003-025135.sql.gz (undo: 20261003T025137Z-pre-import)",
+                "duration_s": 0
             },
             "last_deploy": {
-                "ts": "2026-10-03T00:35:43Z",
-                "run_id": "20261003T003542Z-4ee6fa",
+                "ts": "2026-10-03T02:50:54Z",
+                "run_id": "20261003T025053Z-99d38b",
                 "site": "testsite",
-                "kind": "deploy",
+                "kind": "provision",
                 "phase": "succeeded",
-                "trigger": "manual",
-                "from_sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
-                "to_sha": "9ca721833b478e68655297b1bad7f235b4012d5e",
+                "trigger": "web (a@b.c)",
+                "to_sha": "33609ebcbc8639c2778457d0c0338df7b05d7e50",
                 "subject": "add a hooks.post-start step that clones a private repo",
+                "author": "ddeploy test",
                 "branch": "main",
                 "duration_s": 1
             },
-            "deployed_at": "2026-10-03T00:35:43Z"
+            "deployed_at": "2026-10-03T02:50:54Z",
+            "last_backups": {
+                "database": {
+                    "ts": "2026-10-03T02:51:36Z",
+                    "run_id": "20261003T025135Z-f12992",
+                    "site": "testsite",
+                    "kind": "backup-database",
+                    "phase": "succeeded",
+                    "trigger": "web (a@b.c)",
+                    "subject": "testsite-20261003-025135.sql.gz (740B)",
+                    "duration_s": 1
+                },
+                "uploads": {
+                    "ts": "2026-10-03T02:50:57Z",
+                    "run_id": "20261003T025057Z-cb59f2",
+                    "site": "testsite",
+                    "kind": "backup-uploads",
+                    "phase": "succeeded",
+                    "trigger": "web (a@b.c)",
+                    "subject": "private-uploads web/uploads synced",
+                    "duration_s": 0
+                }
+            }
         },
         {
             "name": "testsite-alt-main",
@@ -66,8 +81,8 @@
             "docroot": "web",
             "db": "testsite",
             "branch": "alt-main",
-            "sha": "4c63cd6bb31a7a38cb717d34e337ce585478a3b8",
-            "committed_at": "2026-10-02T17:37:27+00:00",
+            "sha": "b46302f6976775d946b4b01ba70628b03d8933ce",
+            "committed_at": "2026-10-03T02:46:29+00:00",
             "subject": "alt-main v2",
             "repo": "ssh://gitfixture@127.0.0.1/srv/git/testsite.git",
             "preview": {
@@ -76,45 +91,52 @@
                 "mode": "shared"
             },
             "last_event": {
-                "ts": "2026-10-03T00:33:46Z",
-                "run_id": "20261003T003345Z-c4ce06",
+                "ts": "2026-10-03T02:52:10Z",
+                "run_id": "20261003T025208Z-cdd0c6",
                 "site": "testsite-alt-main",
                 "kind": "provision-preview",
                 "phase": "succeeded",
                 "trigger": "manual",
                 "project": "testsite",
                 "branch": "alt-main",
-                "to_sha": "4c63cd6bb31a7a38cb717d34e337ce585478a3b8",
+                "to_sha": "b46302f6976775d946b4b01ba70628b03d8933ce",
                 "subject": "alt-main v2",
-                "duration_s": 1
+                "author": "ddeploy test",
+                "duration_s": 2
             },
             "last_run": {
-                "ts": "2026-10-03T00:33:46Z",
-                "run_id": "20261003T003345Z-c4ce06",
+                "ts": "2026-10-03T02:52:10Z",
+                "run_id": "20261003T025208Z-cdd0c6",
                 "site": "testsite-alt-main",
                 "kind": "provision-preview",
                 "phase": "succeeded",
                 "trigger": "manual",
                 "project": "testsite",
                 "branch": "alt-main",
-                "to_sha": "4c63cd6bb31a7a38cb717d34e337ce585478a3b8",
+                "to_sha": "b46302f6976775d946b4b01ba70628b03d8933ce",
                 "subject": "alt-main v2",
-                "duration_s": 1
+                "author": "ddeploy test",
+                "duration_s": 2
             },
             "last_deploy": {
-                "ts": "2026-10-03T00:33:46Z",
-                "run_id": "20261003T003345Z-c4ce06",
+                "ts": "2026-10-03T02:52:10Z",
+                "run_id": "20261003T025208Z-cdd0c6",
                 "site": "testsite-alt-main",
                 "kind": "provision-preview",
                 "phase": "succeeded",
                 "trigger": "manual",
                 "project": "testsite",
                 "branch": "alt-main",
-                "to_sha": "4c63cd6bb31a7a38cb717d34e337ce585478a3b8",
+                "to_sha": "b46302f6976775d946b4b01ba70628b03d8933ce",
                 "subject": "alt-main v2",
-                "duration_s": 1
+                "author": "ddeploy test",
+                "duration_s": 2
             },
-            "deployed_at": "2026-10-03T00:33:46Z"
+            "deployed_at": "2026-10-03T02:52:10Z",
+            "last_backups": {
+                "database": null,
+                "uploads": null
+            }
         }
     ]
 }

@@ -13,6 +13,7 @@ import {
   dbInfoResponse,
   envResponse,
   uploadsResponse,
+  backupsResponse,
   doctorResponse,
   eventsResponse,
   infoResponse,
@@ -50,6 +51,7 @@ const cases: Array<[string, z.ZodType]> = [
   ['branches', branchesResponse],
   ['commits', commitsResponse],
   ['uploads', uploadsResponse],
+  ['backups', backupsResponse],
 ];
 
 describe('ddeploy api fixtures', () => {
