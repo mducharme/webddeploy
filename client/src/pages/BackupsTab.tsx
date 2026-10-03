@@ -19,6 +19,29 @@ export function LastBackup({ event, never = 'never' }: { event: DdeployEvent | n
   );
 }
 
+/** Whether object storage holds anything for this site yet. */
+export function hasAnyBackup(b: BackupsResponse): boolean {
+  return b.database.dumps.length > 0 || b.uploads.versions.length > 0 || b.uploads.mirror.some((m) => (m.files ?? 0) > 0 || (m.bytes ?? 0) > 0);
+}
+
+/** Starts a backup run and opens its output. */
+function BackupNowButton({ server, name, what, children, variant }: { server: string; name: string; what: 'database' | 'uploads'; children: ReactNode; variant?: 'primary' }) {
+  const now = useBackupNow(server);
+  const navigate = useNavigate();
+  return (
+    <span className="inline-flex flex-col gap-1">
+      <Button
+        variant={variant}
+        busy={now.isPending}
+        onClick={() => now.mutate({ site: name, body: { what } }, { onSuccess: ({ run_id }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } }) })}
+      >
+        {what === 'database' ? <Database className="size-4" aria-hidden /> : <FolderSync className="size-4" aria-hidden />} {children}
+      </Button>
+      {now.error && <span className="text-xs text-red-700">{now.error.message}</span>}
+    </span>
+  );
+}
+
 export function BackupsTab({ server, name }: { server: string; name: string }) {
   const backups = useBackups(server, name);
   if (backups.isPending) return <Spinner label="Reading backups from object storage…" />;
@@ -43,9 +66,12 @@ export function BackupsTab({ server, name }: { server: string; name: string }) {
       </Card>
     );
   }
+  // Before the first backup, the "No backups yet" card is the one place to start one.
+  const first = !b.error && !hasAnyBackup(b);
   return (
     <div className="space-y-4">
       {b.error && <ErrorBox error={b.error} title="Object storage" />}
+      {first && <FirstBackup server={server} name={name} b={b} />}
       <div className="grid gap-4 lg:grid-cols-2">
         <StatusCard
           server={server}
@@ -54,6 +80,7 @@ export function BackupsTab({ server, name }: { server: string; name: string }) {
           icon={<Database className="size-4" aria-hidden />}
           title="Database"
           enabled={b.database.enabled}
+          first={first}
           schedule={b.database.schedule}
           lastRun={b.database.last_run}
           lines={[
@@ -72,6 +99,7 @@ export function BackupsTab({ server, name }: { server: string; name: string }) {
           icon={<FolderSync className="size-4" aria-hidden />}
           title="Files"
           enabled={b.uploads.enabled}
+          first={first}
           schedule={b.uploads.schedule}
           lastRun={b.uploads.last_run}
           lines={[
@@ -80,9 +108,46 @@ export function BackupsTab({ server, name }: { server: string; name: string }) {
           ]}
         />
       </div>
-      <Dumps server={server} name={name} b={b} />
-      <Files server={server} name={name} b={b} />
+      <Dumps server={server} name={name} b={b} first={first} />
+      <Files server={server} name={name} b={b} first={first} />
     </div>
+  );
+}
+
+/** Nothing in object storage yet: say so plainly, and offer to start. */
+function FirstBackup({ server, name, b }: { server: string; name: string; b: BackupsResponse }) {
+  const canAct = useCan('admin');
+  const isSuper = useCan('superadmin');
+  const db = b.database.enabled;
+  const files = b.uploads.enabled && b.uploads.mirror.length > 0;
+  const auto = [db && `the database ${cronLabel(b.database.schedule)}`, files && `files ${cronLabel(b.uploads.schedule)}`].filter(Boolean).join(', ');
+  return (
+    <Card className="p-6">
+      <div className="flex flex-col items-start gap-3 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-start gap-3">
+          <Archive className="mt-0.5 size-6 shrink-0 text-stone-400" aria-hidden />
+          <div className="text-sm">
+            <p className="font-medium">No backups yet</p>
+            <p className="text-stone-600 dark:text-stone-400">
+              {db || files ? (
+                <>Nothing has been backed up to {b.bucket} for this site so far. Automatic backups will run {auto}{canAct ? ', or start the first one now.' : '.'}</>
+              ) : (
+                <>
+                  Automatic backups are off on this server.{' '}
+                  {isSuper && <Link to="/s/$server/server-settings" params={{ server }} className="text-teal-700 hover:underline">Turn them on in server settings</Link>}
+                </>
+              )}
+            </p>
+          </div>
+        </div>
+        {canAct && (db || files) && (
+          <div className="flex flex-wrap gap-2">
+            {db && <BackupNowButton server={server} name={name} what="database" variant="primary">Back up the database</BackupNowButton>}
+            {files && <BackupNowButton server={server} name={name} what="uploads" variant={db ? undefined : 'primary'}>Back up the files</BackupNowButton>}
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 
@@ -93,6 +158,7 @@ function StatusCard(props: {
   icon: ReactNode;
   title: string;
   enabled: boolean;
+  first: boolean;
   schedule: string;
   lastRun: DdeployEvent | null;
   lines: ReactNode[];
@@ -104,7 +170,7 @@ function StatusCard(props: {
     <Card
       title={<span className="flex items-center gap-2">{props.icon} {props.title}</span>}
       actions={
-        props.enabled && canAct ? (
+        props.enabled && canAct && !props.first ? (
           <Button
             busy={now.isPending}
             onClick={() =>
@@ -133,7 +199,7 @@ function StatusCard(props: {
   );
 }
 
-function Dumps({ server, name, b }: { server: string; name: string; b: BackupsResponse }) {
+function Dumps({ server, name, b, first }: { server: string; name: string; b: BackupsResponse; first: boolean }) {
   const restore = useBackupRestoreDb(server);
   const manage = useManageBackup(server, name);
   const navigate = useNavigate();
@@ -147,7 +213,10 @@ function Dumps({ server, name, b }: { server: string; name: string; b: BackupsRe
       </p>
       {(restore.error ?? manage.error) && <ErrorBox error={restore.error ?? manage.error} />}
       {b.database.dumps.length === 0 ? (
-        <Empty>No dumps yet.</Empty>
+        <div className="flex flex-wrap items-center justify-between gap-3 p-4 text-sm text-stone-500">
+          <span>No database backup yet.{b.database.enabled ? ` The first automatic one runs ${cronLabel(b.database.schedule)}.` : ''}</span>
+          {canAct && b.database.enabled && !first && <BackupNowButton server={server} name={name} what="database">Back up now</BackupNowButton>}
+        </div>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full min-w-[44rem]">
@@ -191,7 +260,7 @@ function Dumps({ server, name, b }: { server: string; name: string; b: BackupsRe
   );
 }
 
-function Files({ server, name, b }: { server: string; name: string; b: BackupsResponse }) {
+function Files({ server, name, b, first }: { server: string; name: string; b: BackupsResponse; first: boolean }) {
   const restore = useBackupRestoreUploads(server);
   const [shown, setShown] = useState(8);
   const canAct = useCan('admin');
@@ -206,17 +275,26 @@ function Files({ server, name, b }: { server: string; name: string; b: BackupsRe
       </p>
       {restore.error && <ErrorBox error={restore.error} />}
       <div className="divide-y divide-stone-100 dark:divide-stone-800">
+        {b.uploads.mirror.length === 0 && <Empty>This site has no upload folders, so there are no files to back up.</Empty>}
         {b.uploads.mirror.map((m) => (
           <div key={m.dir} className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm">
-            <span><Mono>{m.dir}</Mono> <span className="text-stone-500">— backup: {m.files ?? '?'} file(s), {bytes(m.bytes)}</span></span>
-            {canAct && <ConfirmButton
+            <span>
+              <Mono>{m.dir}</Mono>{' '}
+              <span className="text-stone-500">— {m.files ? `backup: ${m.files} file(s), ${bytes(m.bytes)}` : 'not backed up yet'}</span>
+            </span>
+            {canAct && !!m.files && <ConfirmButton
               label="Restore folder"
               confirmLabel={`Replace ${m.dir} with the backup`}
-              disabled={!m.files}
               onConfirm={() => restore.mutate({ site: name, body: { dir: m.dir } }, { onSuccess: go })}
             />}
           </div>
         ))}
+        {canAct && b.uploads.enabled && !first && b.uploads.mirror.some((m) => !m.files) && (
+          <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 text-sm text-stone-500">
+            <span>A files backup copies every upload folder. The next automatic one runs {cronLabel(b.uploads.schedule)}.</span>
+            <BackupNowButton server={server} name={name} what="uploads">Back up now</BackupNowButton>
+          </div>
+        )}
       </div>
       <p className="border-t border-stone-200 px-4 pb-1 pt-3 text-xs font-medium uppercase tracking-wide text-stone-500 dark:border-stone-800">Versions</p>
       {b.uploads.versions.length === 0 ? (
