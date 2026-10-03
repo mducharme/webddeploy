@@ -4,15 +4,16 @@ import { ExternalLink } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Checks } from '../components/Checks.tsx';
 import { LogView } from '../components/LogView.tsx';
-import { Commit, RunTable } from '../components/RunTable.tsx';
+import { Commit } from '../components/RunTable.tsx';
 import { DatabaseTab } from './DatabaseTab.tsx';
 import { EnvTab } from './EnvTab.tsx';
 import { HistoryTab } from './HistoryTab.tsx';
 import { OverviewTab } from './OverviewTab.tsx';
 import { SettingsTab } from './SettingsTab.tsx';
 import { DeployNowButton } from './siteShared.tsx';
-import { Badge, Button, Card, Empty, ErrorBox, Mono, Spinner, StatusDot, Tabs, Td, Th } from '../components/ui.tsx';
-import { logStreamUrl, useDoctor, useLogs, usePreviews, useSite } from '../lib/api.ts';
+import { PreviewActions, PreviewsTab } from './PreviewsTab.tsx';
+import { Badge, Button, Card, Empty, ErrorBox, Mono, Spinner, StatusDot, Tabs } from '../components/ui.tsx';
+import { logStreamUrl, useDoctor, useLogs, useSite } from '../lib/api.ts';
 import { relativeTime } from '../lib/format.ts';
 import { useOutputStream } from '../lib/stream.ts';
 
@@ -53,6 +54,7 @@ export function SitePage() {
           </div>
         </div>
         {!s.preview && <DeployNowButton server={server} name={s.name} confirmLabel={`Deploy ${s.branch ?? 'branch'} to ${s.name}`} />}
+        {s.preview && <PreviewActions server={server} project={s.preview.project} branch={s.preview.branch} mode={s.preview.mode} />}
       </div>
 
       <Tabs tabs={tabs} value={tab} onChange={(t) => void navigate({ search: { tab: t }, replace: true })} />
@@ -62,51 +64,10 @@ export function SitePage() {
       {tab === 'environment' && <EnvTab server={server} name={name} isPreview={!!s.preview} />}
       {tab === 'settings' && <SettingsTab server={server} detail={d} />}
       {tab === 'database' && <DatabaseTab server={server} name={name} />}
-      {tab === 'previews' && <PreviewsTab server={server} name={name} />}
+      {tab === 'previews' && <PreviewsTab server={server} project={name} repo={s.repo} />}
       {tab === 'logs' && <SiteLog server={server} name={name} />}
       {tab === 'health' && <HealthTab server={server} name={name} />}
       {tab === 'config' && <ConfigTab detail={d} />}
-    </div>
-  );
-}
-
-function PreviewsTab({ server, name }: { server: string; name: string }) {
-  const previews = usePreviews(server, name);
-  if (previews.isPending) return <Spinner />;
-  if (previews.error) return <ErrorBox error={previews.error} />;
-  const { active, history } = previews.data;
-  return (
-    <div className="space-y-4">
-      <Card title={`Active previews (${active.length})`}>
-        {active.length === 0 ? (
-          <Empty>No active previews.</Empty>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[40rem]">
-              <thead className="border-b border-stone-200 dark:border-stone-800">
-                <tr><Th>Branch</Th><Th>URL</Th><Th>Mode</Th><Th>Live</Th></tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                {active.map((p) => (
-                  <tr key={p.name}>
-                    <Td className="font-medium">{p.branch}</Td>
-                    <Td>
-                      <a href={p.url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-teal-700 hover:underline dark:text-teal-400">
-                        {p.url.replace('https://', '')} <ExternalLink className="size-3" aria-hidden />
-                      </a>
-                    </Td>
-                    <Td><Badge tone="neutral">{p.mode}</Badge></Td>
-                    <Td><Commit sha={p.sha} subject={p.subject} /></Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </Card>
-      <Card title="Preview history">
-        <RunTable runs={history} server={server} showSite empty="No preview activity recorded yet." />
-      </Card>
     </div>
   );
 }

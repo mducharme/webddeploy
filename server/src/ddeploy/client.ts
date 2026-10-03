@@ -21,6 +21,8 @@ import {
   runStartResponse,
   siteDetailResponse,
   sitesResponse,
+  previewCreateFlags,
+  type PreviewCreateRequest,
   type ProvisionRequestParsed,
 } from '@webddeploy/shared';
 import type { Readable } from 'node:stream';
@@ -185,5 +187,17 @@ export class DdeployClient {
 
   dbDump(site: string, snapshot?: string): Promise<RawStream> {
     return this.connector.stream(['db', 'dump', site, ...(snapshot ? ['--snapshot', snapshot] : [])]);
+  }
+
+  startPreviewCreate(project: string, actor: string, req: Required<Pick<PreviewCreateRequest, 'branch'>> & Parameters<typeof previewCreateFlags>[0]) {
+    return this.call(runStartResponse, ['run', 'start', 'preview-create', project, '--branch', req.branch, ...previewCreateFlags(req), '--actor', actor]);
+  }
+
+  startPreviewDeploy(project: string, actor: string, branch: string) {
+    return this.call(runStartResponse, ['run', 'start', 'preview-deploy', project, '--branch', branch, '--actor', actor]);
+  }
+
+  startPreviewRemove(project: string, actor: string, branch: string) {
+    return this.call(runStartResponse, ['run', 'start', 'preview-remove', project, '--branch', branch, '--actor', actor]);
   }
 }

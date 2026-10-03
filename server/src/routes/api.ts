@@ -2,6 +2,8 @@ import {
   PREVIEW_KINDS,
   SECRET_KEY,
   envChangeRequest,
+  previewBranchRequest,
+  previewCreateRequest,
   settingsRequest,
   type EnvResponse,
   collapseRuns,
@@ -136,6 +138,38 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
     const history = collapseRuns(events.filter((e) => PREVIEW_KINDS.has(e.kind)));
     return c.json({ active: active.previews, history });
   });
+
+  srv.post('/sites/:name/previews', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const user = c.get('user');
+    const parsed = previewCreateRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return issues(c, parsed.error);
+    return audited(user.email, s.ref.id, 'preview.create', name, parsed.data, async () => {
+      const r = await s.client.startPreviewCreate(name, user.email, parsed.data);
+      invalidateSite(s, name);
+      return { body: { run_id: r.run_id, site: r.site ?? null }, runId: r.run_id, status: 202 };
+    }, c);
+  });
+
+  for (const [path, action, start] of [
+    ['deploy', 'preview.deploy', 'startPreviewDeploy'],
+    ['remove', 'preview.remove', 'startPreviewRemove'],
+  ] as const) {
+    srv.post(`/sites/:name/previews/${path}`, async (c) => {
+      const s = c.get('server');
+      const name = siteParam(c);
+      const user = c.get('user');
+      const parsed = previewBranchRequest.safeParse(await c.req.json().catch(() => null));
+      if (!parsed.success) return issues(c, parsed.error);
+      return audited(user.email, s.ref.id, action, name, parsed.data, async () => {
+        const r = await s.client[start](name, user.email, parsed.data.branch);
+        invalidateSite(s, name);
+        if (r.site) invalidateSite(s, r.site);
+        return { body: { run_id: r.run_id, site: r.site ?? null }, runId: r.run_id, status: 202 };
+      }, c);
+    });
+  }
 
   srv.post('/sites/:name/deploy', async (c) => {
     const s = c.get('server');

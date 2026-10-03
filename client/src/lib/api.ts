@@ -216,6 +216,22 @@ export function useStartRun(server: string, path: (site: string) => string) {
   });
 }
 
+/** Preview runs are started on the project; their own site name comes back with the run id. */
+export function usePreviewRun(server: string, action: 'create' | 'deploy' | 'remove') {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: ({ project, body }: { project: string; body: unknown }) =>
+      api<{ run_id: string; site: string | null }>(`${base(server)}/sites/${project}/previews${action === 'create' ? '' : `/${action}`}`, {
+        method: 'POST',
+        body: JSON.stringify(body),
+      }),
+    onSuccess: (_, { project }) => {
+      void qc.invalidateQueries({ queryKey: keys.previews(server, project) });
+      void qc.invalidateQueries({ queryKey: keys.sites(server) });
+    },
+  });
+}
+
 export const useRollback = (server: string) => useStartRun(server, (site) => `/sites/${site}/rollback`);
 export const useDbRestore = (server: string) => useStartRun(server, (site) => `/sites/${site}/db/restore`);
 export const useDbSnapshot = (server: string) => useStartRun(server, (site) => `/sites/${site}/db/snapshot`);

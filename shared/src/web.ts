@@ -127,3 +127,32 @@ export function worstOf(statuses: Iterable<CheckStatus>): CheckStatus {
   for (const s of statuses) if (severity[s] > severity[worst]) worst = s;
   return worst;
 }
+
+/** POST .../previews: a branch preview of a project. */
+export const previewCreateRequest = z.object({
+  branch: z
+    .string()
+    .trim()
+    .regex(patterns.branch, 'not a plain branch name')
+    .refine((b) => !`/${b}/`.includes('/../'), 'not a plain branch name'),
+  /** shared: the project's database and uploads; isolated: its own copy. Absent: the server default (PREVIEW_DB_MODE). */
+  mode: z.enum(['shared', 'isolated']).nullable().default(null),
+  /** Isolated only: seed the copy from the project at creation (ddeploy default: yes). */
+  seed: z.boolean().default(true),
+  /** Basic auth; previews default to on. */
+  auth: z.boolean().nullable().default(null),
+});
+export type PreviewCreateRequest = z.input<typeof previewCreateRequest>;
+
+export const previewBranchRequest = z.object({ branch: previewCreateRequest.shape.branch });
+
+/** The flags after `--branch <b>` for `api run start preview-create`. */
+export function previewCreateFlags(req: z.output<typeof previewCreateRequest>): string[] {
+  const flags: string[] = [];
+  if (req.mode === 'shared') flags.push('--shared');
+  if (req.mode === 'isolated') flags.push('--isolated');
+  if (req.mode !== 'shared' && !req.seed) flags.push('--no-seed');
+  if (req.auth === true) flags.push('--auth');
+  if (req.auth === false) flags.push('--no-auth');
+  return flags;
+}

@@ -18,6 +18,10 @@ What it's for:
 - **See deploys, successful and failed.** History per site and fleet-wide,
   with live run output, highlighted errors, "what changed" (the commits
   deployed or taken back out), and retry, roll back or cancel.
+- **Branch previews.** Create a preview of any branch from a site's
+  Previews tab, with shared or isolated data and basic auth on or off.
+  Redeploy or remove it from the list or from the preview's own page;
+  removing an isolated preview also drops its own database.
 - **Change environment variables.** The `.env` editor masks secrets until
   you reveal one (each reveal is audited), accepts pasted `.env` content,
   and warns when a value needs quotes.

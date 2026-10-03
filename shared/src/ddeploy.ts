@@ -228,7 +228,7 @@ export const inspectRepoResponse = z.object({
 });
 export type InspectRepoResponse = z.infer<typeof inspectRepoResponse>;
 
-export const runStartResponse = z.object({ ...versioned, run_id: z.string() });
+export const runStartResponse = z.object({ ...versioned, run_id: z.string(), site: z.string().optional() });
 
 export const runMeta = z.object({
   run_id: z.string(),

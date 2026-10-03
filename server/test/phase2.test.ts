@@ -189,3 +189,45 @@ describe('streams', () => {
 function require_info() {
   return { api_version: 1, hostname: 'h', ddeploy: { sha: null, branch: null }, base_domain: 'x', php: { default: '8.3', baseline: [], installed: [] }, node: { enabled: true, default: '22' }, features: { webhook: false, backups: false, db_backups: false, preview_prune: false, web: true }, preview_db_mode: 'shared', basic_auth_default: false };
 }
+
+describe('previews', () => {
+  it('creates a preview with exactly the chosen options', async () => {
+    const { req, connector, audit } = makeApp();
+    const res = await req(`${site}/previews`, { method: 'POST', body: JSON.stringify({ branch: 'feature/header', mode: 'isolated', seed: false, auth: false }) });
+    expect(res.status).toBe(202);
+    expect(connector.calls).toContainEqual([
+      'run', 'start', 'preview-create', 'testsite', '--branch', 'feature/header', '--isolated', '--no-seed', '--no-auth', '--actor', ADMIN,
+    ]);
+    expect(audit.list()[0]).toMatchObject({ action: 'preview.create', target: 'testsite', outcome: 'ok' });
+  });
+
+  it('defaults to the server mode and basic auth on (no flags)', async () => {
+    const { req, connector } = makeApp();
+    await req(`${site}/previews`, { method: 'POST', body: JSON.stringify({ branch: 'develop' }) });
+    expect(connector.calls).toContainEqual(['run', 'start', 'preview-create', 'testsite', '--branch', 'develop', '--actor', ADMIN]);
+  });
+
+  it('seed is irrelevant to a shared preview', async () => {
+    const { req, connector } = makeApp();
+    await req(`${site}/previews`, { method: 'POST', body: JSON.stringify({ branch: 'develop', mode: 'shared', seed: false }) });
+    expect(connector.calls.find((c) => c[2] === 'preview-create')).not.toContain('--no-seed');
+  });
+
+  it('redeploys and removes by branch', async () => {
+    const { req, connector, audit } = makeApp();
+    expect((await req(`${site}/previews/deploy`, { method: 'POST', body: JSON.stringify({ branch: 'develop' }) })).status).toBe(202);
+    expect((await req(`${site}/previews/remove`, { method: 'POST', body: JSON.stringify({ branch: 'develop' }) })).status).toBe(202);
+    expect(connector.calls).toContainEqual(['run', 'start', 'preview-deploy', 'testsite', '--branch', 'develop', '--actor', ADMIN]);
+    expect(connector.calls).toContainEqual(['run', 'start', 'preview-remove', 'testsite', '--branch', 'develop', '--actor', ADMIN]);
+    expect(audit.list().map((e) => e.action)).toEqual(['preview.remove', 'preview.deploy']);
+  });
+
+  it('refuses invalid branches without calling ddeploy', async () => {
+    const { req, connector } = makeApp();
+    for (const branch of ['-x', 'a/../b', 'with space', '']) {
+      expect((await req(`${site}/previews`, { method: 'POST', body: JSON.stringify({ branch }) })).status).toBe(400);
+    }
+    expect((await req(`${site}/previews/remove`, { method: 'POST', body: JSON.stringify({}) })).status).toBe(400);
+    expect(connector.calls).toEqual([]);
+  });
+});
