@@ -64,6 +64,8 @@ const envSchema = z.object({
   SITES_CACHE_SECONDS: z.coerce.number().min(0).default(20),
   DOCTOR_CACHE_SECONDS: z.coerce.number().min(0).default(60),
   LOG_POLL_MS: z.coerce.number().int().min(200).default(1500),
+  /** How often /live checks ddeploy for runs starting and finishing (shared by every open tab). */
+  LIVE_POLL_MS: z.coerce.number().int().min(500).default(3000),
 });
 
 export interface Config {
@@ -85,6 +87,7 @@ export interface Config {
   sitesCacheMs: number;
   doctorCacheMs: number;
   logPollMs: number;
+  livePollMs: number;
 }
 
 export function parseCommand(raw: string): string[] {
@@ -145,5 +148,6 @@ export function loadConfig(env: Record<string, string | undefined> = process.env
     sitesCacheMs: e.SITES_CACHE_SECONDS * 1000,
     doctorCacheMs: e.DOCTOR_CACHE_SECONDS * 1000,
     logPollMs: e.LOG_POLL_MS,
+    livePollMs: e.LIVE_POLL_MS,
   };
 }

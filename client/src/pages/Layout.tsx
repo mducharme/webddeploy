@@ -3,6 +3,9 @@ import { Link, Outlet, useParams } from '@tanstack/react-router';
 import { Activity, Archive, ChevronDown, FileText, HeartPulse, LayoutGrid, LogOut, Plus, Settings2, Users } from 'lucide-react';
 import { ROLE_LABELS } from '@webddeploy/shared';
 import { Can } from '../lib/role.tsx';
+import { RunningIndicator } from '../components/RunningIndicator.tsx';
+import { Toaster } from '../components/Toaster.tsx';
+import { useLiveStream } from '../lib/live.ts';
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { ApiError, api, signOut, useMe } from '../lib/api.ts';
 import { Button, ErrorBox, Spinner } from '../components/ui.tsx';
@@ -35,6 +38,7 @@ function Shell({ children }: { children: ReactNode }) {
   const params = useParams({ strict: false }) as { server?: string };
   const server = params.server ?? me.servers[0]?.id ?? 'local';
   const serverName = me.servers.find((s) => s.id === server)?.name ?? server;
+  useLiveStream(server);
   return (
     <div className="min-h-screen">
       <header className="border-b border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
@@ -52,6 +56,7 @@ function Shell({ children }: { children: ReactNode }) {
             <NavLink to="/activity" icon={<Activity className="size-4" />}>Activity</NavLink>
             <Can role="superadmin"><AdminMenu server={server} /></Can>
           </nav>
+          <RunningIndicator server={server} />
           <Can role="admin">
             <Link to="/s/$server/provision" params={{ server }}>
               <Button variant="primary"><Plus className="size-4" /> New site</Button>
@@ -68,6 +73,7 @@ function Shell({ children }: { children: ReactNode }) {
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+      <Toaster />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 import { fetchSource, patterns, type FetchTestResponse } from '@webddeploy/shared';
 import { Check, Copy, KeyRound, Server, ShieldAlert, ShieldCheck } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Button, Card, ErrorBox, Field, Mono, cx, inputClass } from '../components/ui.tsx';
+import { Button, Card, ErrorBox, Field, Mono, cx, inputClass, InlineError } from '../components/ui.tsx';
 import { useFetchKey, useFetchTest, useForgetHost, useUploadsFetch } from '../lib/api.ts';
 import { bytes } from '../lib/format.ts';
 
@@ -175,7 +175,7 @@ export function CopyFromServer({ server, name, dirs, onStarted }: { server: stri
               <Button busy={forget.isPending} onClick={() => forget.mutate({ host: t.host, port: t.port }, { onSuccess: () => test.mutate({ source }) })}>
                 Forget the old key
               </Button>
-              {forget.error && <p className="text-xs">{forget.error.message}</p>}
+              {forget.error && <InlineError error={forget.error} className="text-xs" />}
             </div>
           )}
 

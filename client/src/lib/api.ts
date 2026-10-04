@@ -56,6 +56,13 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return (await res.json()) as T;
 }
 
+declare module '@tanstack/react-query' {
+  interface Register {
+    /** success: a toast once the mutation (and the refresh it waits for) succeeded. */
+    mutationMeta: { success?: string | ((data: unknown, variables: unknown) => string) };
+  }
+}
+
 const base = (server: string) => `/api/servers/${encodeURIComponent(server)}`;
 
 export const keys = {
@@ -211,6 +218,7 @@ export const revealEnv = (server: string, name: string, key: string) =>
 export function useApplyEnv(server: string, name: string) {
   const qc = useQueryClient();
   return useMutation({
+    meta: { success: 'Environment saved — PHP reads it on the next request' },
     mutationFn: (req: EnvChangeRequest) => api<MaskedEnv>(`${base(server)}/sites/${name}/env`, { method: 'PUT', body: JSON.stringify(req) }),
     onSuccess: (env) => {
       qc.setQueryData(keys.env(server, name), env);
@@ -222,6 +230,7 @@ export function useApplyEnv(server: string, name: string) {
 export function useApplySettings(server: string, name: string) {
   const qc = useQueryClient();
   return useMutation({
+    meta: { success: 'Settings saved — they apply on the next deploy' },
     mutationFn: (req: SettingsRequest) => api<SiteDetailResponse>(`${base(server)}/sites/${name}/settings`, { method: 'PUT', body: JSON.stringify(req) }),
     onSuccess: (detail) => {
       qc.setQueryData(keys.site(server, name), detail);
@@ -284,7 +293,7 @@ export const useDbRestore = (server: string) => useStartRun(server, (site) => `/
 export const useDbSnapshot = (server: string) => useStartRun(server, (site) => `/sites/${site}/db/snapshot`);
 
 export const useCancelRun = (server: string) =>
-  useMutation({ mutationFn: (id: string) => api<{ cancelled: boolean }>(`${base(server)}/runs/${id}/cancel`, { method: 'POST' }) });
+  useMutation({ meta: { success: 'Cancelling the run…' }, mutationFn: (id: string) => api<{ cancelled: boolean }>(`${base(server)}/runs/${id}/cancel`, { method: 'POST' }) });
 
 export const useUploads = (server: string, name: string) =>
   useQuery({ queryKey: keys.uploads(server, name), queryFn: () => api<UploadsResponse>(`${base(server)}/sites/${name}/uploads`) });
@@ -305,6 +314,7 @@ export const useBackupRestoreUploads = (server: string) => useStartRun(server, (
 export function useManageBackup(server: string, name: string) {
   const qc = useQueryClient();
   return useMutation({
+    meta: { success: (_: unknown, v: unknown) => ({ keep: 'Backup kept — retention won’t delete it', unkeep: 'Backup no longer kept', delete: 'Backup deleted' })[(v as { action: 'keep' | 'unkeep' | 'delete' }).action] },
     mutationFn: ({ action, file }: { action: 'keep' | 'unkeep' | 'delete'; file: string }) =>
       api<{ file: string; action: string }>(`${base(server)}/sites/${name}/backups/${action}`, { method: 'POST', body: JSON.stringify({ file }) }),
     // Returned: the mutation (and its button) stays pending until the list no longer shows the old state.
@@ -317,6 +327,7 @@ export const useUsers = () => useQuery({ queryKey: keys.users, queryFn: () => ap
 export function useSetUser() {
   const qc = useQueryClient();
   return useMutation({
+    meta: { success: (_: unknown, v: unknown) => `${(v as { email: string }).email}: role saved` },
     mutationFn: (u: { email: string; role: Role }) => api<{ users: UserEntry[] }>('/api/admin/users', { method: 'PUT', body: JSON.stringify(u) }),
     onSuccess: (r) => qc.setQueryData(keys.users, r),
   });
@@ -325,6 +336,7 @@ export function useSetUser() {
 export function useRemoveUser() {
   const qc = useQueryClient();
   return useMutation({
+    meta: { success: (_: unknown, v: unknown) => `${v as string} no longer has access` },
     mutationFn: (email: string) => api<{ users: UserEntry[] }>(`/api/admin/users/${encodeURIComponent(email)}`, { method: 'DELETE' }),
     onSuccess: (r) => qc.setQueryData(keys.users, r),
   });
@@ -335,6 +347,7 @@ export const useOptions = () => useQuery({ queryKey: keys.options, queryFn: () =
 export function useSetOptions() {
   const qc = useQueryClient();
   return useMutation({
+    meta: { success: 'Global options saved' },
     mutationFn: (o: Partial<GlobalOptions>) => api<GlobalOptions>('/api/admin/options', { method: 'PUT', body: JSON.stringify(o) }),
     onSuccess: (r) => qc.setQueryData(keys.options, r),
   });
@@ -346,6 +359,7 @@ export const useServerConfig = (server: string) =>
 export function useSetServerConfig(server: string) {
   const qc = useQueryClient();
   return useMutation({
+    meta: { success: (_: unknown, v: unknown) => `Server settings saved (${Object.keys(v as object).length})` },
     mutationFn: (set: Record<string, string>) => api<ServerConfigResponse>(`${base(server)}/config`, { method: 'PUT', body: JSON.stringify({ set }) }),
     onSuccess: (r) => {
       qc.setQueryData(keys.config(server), r);
@@ -375,6 +389,7 @@ export function useFetchTest(server: string, name: string) {
 export function useForgetHost(server: string) {
   const qc = useQueryClient();
   return useMutation({
+    meta: { success: (_: unknown, v: unknown) => `Forgot ${(v as { host: string }).host}’s host key` },
     mutationFn: (body: { host: string; port: number }) => api<FetchKeyResponse>(`${base(server)}/fetch-key/forget`, { method: 'POST', body: JSON.stringify(body) }),
     onSuccess: (r) => qc.setQueryData(keys.fetchKey(server), r),
   });

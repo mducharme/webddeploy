@@ -1,7 +1,7 @@
 import { useParams } from '@tanstack/react-router';
 import { APPLY_LABELS, SERVER_SETTINGS, type ServerConfigResponse, type ServerSettingDef } from '@webddeploy/shared';
 import { useEffect, useMemo, useState } from 'react';
-import { Badge, Button, Card, ErrorBox, Field, Mono, Spinner, cx, inputClass } from '../components/ui.tsx';
+import { Badge, Button, Card, ErrorBox, Field, Mono, Spinner, cx, inputClass, InlineError } from '../components/ui.tsx';
 import { useServerConfig, useSetServerConfig } from '../lib/api.ts';
 
 /** Fields changed from what the server reports; secrets only when something was typed. */
@@ -76,7 +76,7 @@ export function ServerSettingsPage() {
           </Button>
           {n > 0 && <Button variant="ghost" onClick={() => setDrafts({})}>Discard</Button>}
           {saved && n === 0 && <span className="text-sm text-emerald-700 dark:text-emerald-400">{saved}</span>}
-          {save.error && <span className="text-sm text-red-700">{save.error.message}</span>}
+          {save.error && <InlineError error={save.error} className="text-sm text-red-700" />}
         </div>
       )}
     </div>

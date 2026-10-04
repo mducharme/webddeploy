@@ -1,7 +1,7 @@
 import { SETTINGS, type SettingDef, type SettingsRequest, type SiteDetailResponse } from '@webddeploy/shared';
 import { RotateCcw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Badge, Button, Card, Field, Mono, cx, inputClass } from '../components/ui.tsx';
+import { Badge, Button, Card, Field, Mono, cx, inputClass, InlineError } from '../components/ui.tsx';
 import { useApplySettings, useBranches } from '../lib/api.ts';
 import { DeployNowButton } from './siteShared.tsx';
 import { useCan } from '../lib/role.tsx';
@@ -148,7 +148,7 @@ export function SettingsTab({ server, detail }: { server: string; detail: SiteDe
             Saved — applies on the next deploy. {!detail.site.preview && <DeployNowButton server={server} name={name} label="Deploy now" />}
           </span>
         )}
-        {apply.error && <span className="text-sm text-red-700">{apply.error.message}</span>}
+        {apply.error && <InlineError error={apply.error} className="text-sm text-red-700" />}
       </div>}
     </div>
   );

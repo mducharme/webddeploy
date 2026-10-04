@@ -3,7 +3,7 @@ import type { BackupsResponse, DdeployEvent } from '@webddeploy/shared';
 import { Archive, Database, Download, FolderSync, Pin, PinOff, Trash2 } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Trigger } from '../components/RunTable.tsx';
-import { Badge, Button, Card, ConfirmButton, Empty, ErrorBox, Mono, Spinner, Td, Th } from '../components/ui.tsx';
+import { Badge, Button, Card, ConfirmButton, Empty, ErrorBox, Mono, Spinner, Td, Th, InlineError } from '../components/ui.tsx';
 import { backupDownloadUrl, useBackupNow, useBackupRestoreDb, useBackupRestoreUploads, useBackups, useManageBackup } from '../lib/api.ts';
 import { bytes, cronLabel, dateTime, relativeTime } from '../lib/format.ts';
 import { useCan } from '../lib/role.tsx';
@@ -37,7 +37,7 @@ function BackupNowButton({ server, name, what, children, variant }: { server: st
       >
         {what === 'database' ? <Database className="size-4" aria-hidden /> : <FolderSync className="size-4" aria-hidden />} {children}
       </Button>
-      {now.error && <span className="text-xs text-red-700">{now.error.message}</span>}
+      {now.error && <InlineError error={now.error} className="text-xs text-red-700" />}
     </span>
   );
 }
@@ -193,7 +193,7 @@ function StatusCard(props: {
         ) : (
           <p className="text-stone-500">Off on this server ({props.what === 'database' ? 'DB_BACKUP_ENABLED' : 'BACKUP_ENABLED'}).</p>
         )}
-        {now.error && <p className="text-red-700">{now.error.message}</p>}
+        {now.error && <InlineError error={now.error} className="text-red-700" />}
       </div>
     </Card>
   );

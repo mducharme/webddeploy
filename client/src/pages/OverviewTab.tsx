@@ -4,7 +4,7 @@ import { CheckCircle2, Circle, X } from 'lucide-react';
 import { useState } from 'react';
 import { Checks } from '../components/Checks.tsx';
 import { Commit, Trigger } from '../components/RunTable.tsx';
-import { Card, ErrorBox, PhaseBadge, Spinner, StatusDot, Mono } from '../components/ui.tsx';
+import { Card, ErrorBox, PhaseBadge, Spinner, StatusDot, Mono, InlineError } from '../components/ui.tsx';
 import { useDbInfo, useDoctor, useEnv, useInfo, useSiteRuns, useUploads } from '../lib/api.ts';
 import { duration, kindLabel, relativeTime } from '../lib/format.ts';
 import type { SiteTab } from './Site.tsx';
@@ -34,7 +34,7 @@ export function OverviewTab({ server, detail }: { server: string; detail: SiteDe
           {doctor.isPending ? (
             <p className="mt-2 text-sm text-stone-500">Running checks…</p>
           ) : doctor.error ? (
-            <p className="mt-2 text-sm text-red-700">{doctor.error.message}</p>
+            <InlineError error={doctor.error} className="mt-2 text-sm text-red-700" />
           ) : (
             <>
               <p className="mt-2 flex items-center gap-2 text-lg font-semibold">

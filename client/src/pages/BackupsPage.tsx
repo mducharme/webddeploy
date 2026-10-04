@@ -1,7 +1,7 @@
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import type { SiteSummary } from '@webddeploy/shared';
 import { Archive } from 'lucide-react';
-import { Button, Card, Empty, ErrorBox, Mono, Spinner, Td, Th, cx } from '../components/ui.tsx';
+import { Button, Card, Empty, ErrorBox, Mono, Spinner, Td, Th, cx, InlineError } from '../components/ui.tsx';
 import { useBackupNow, useInfo, useSites } from '../lib/api.ts';
 import { cronLabel } from '../lib/format.ts';
 import { LastBackup } from './BackupsTab.tsx';
@@ -93,7 +93,7 @@ function Row({ server, site, dbOn, filesOn }: { server: string; site: SiteSummar
           {canAct && dbOn && <Button busy={busy('database')} onClick={() => run('database')}><Archive className="size-4" aria-hidden /> Database</Button>}
           {canAct && filesOn && <Button busy={busy('uploads')} onClick={() => run('uploads')}><Archive className="size-4" aria-hidden /> Files</Button>}
         </span>
-        {now.error && <p className="mt-1 text-xs text-red-700">{now.error.message}</p>}
+        {now.error && <InlineError error={now.error} className="mt-1 text-xs text-red-700" />}
       </Td>
     </tr>
   );

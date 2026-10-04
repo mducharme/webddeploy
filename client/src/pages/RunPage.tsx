@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query';
 import { Link, useParams } from '@tanstack/react-router';
-import { isTerminal, type Commit as CommitT } from '@webddeploy/shared';
+import { isTerminal, type Commit as CommitT, hintFor } from '@webddeploy/shared';
 import { Square } from 'lucide-react';
 import { useEffect } from 'react';
 import { LogView } from '../components/LogView.tsx';
@@ -98,6 +98,9 @@ export function RunPage() {
           Waiting to start — another run on this site holds its lock; this one starts when it finishes.
         </div>
       )}
+      {run.phase === 'failed' && !run.error && (
+        <ErrorBox error="No error message was recorded — the output below shows what happened." title="Failed" hint={hintFor(stream.text)} />
+      )}
       {run.error && (
         <ErrorBox
           error={
@@ -106,6 +109,8 @@ export function RunPage() {
               : run.error
           }
           title={run.phase === 'unknown' ? 'No result recorded' : 'Failed'}
+          // The last error line often isn't the cause: an npm ERR! or AccessDenied further up is.
+          hint={run.phase === 'failed' ? hintFor(stream.text) : null}
         />
       )}
 

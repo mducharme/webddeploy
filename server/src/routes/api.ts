@@ -14,6 +14,7 @@ import {
   previewCreateRequest,
   settingsRequest,
   type EnvResponse,
+  CHANGE_KINDS,
   collapseRuns,
   isTerminal,
   patterns,
@@ -351,6 +352,50 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
     const limit = intQuery(c, 'limit', 50, 500);
     const { events } = await s.client.events({ site, limit: Math.min(limit * 3, 5000) });
     return c.json({ runs: collapseRuns(events).slice(0, limit) });
+  });
+
+  // What's happening, pushed: the runs in progress whenever that changes,
+  // and each run that finished since the last message. One ddeploy call
+  // per LIVE_POLL_MS, shared by every open tab (s.polls).
+  srv.get('/live', (c) => {
+    const s = c.get('server');
+    return streamSSE(c, async (stream) => {
+      const beat = heartbeat(stream);
+      let running = new Map<string, Run>();
+      let seen = new Set<string>();
+      let lastSig = '';
+      let first = true;
+      while (!stream.aborted) {
+        let runs: Run[];
+        try {
+          const { events } = await s.polls.get('live', config.livePollMs, () => s.client.events({ limit: 200 }));
+          runs = collapseRuns(events, new Date(now())).slice(0, 60);
+        } catch (err) {
+          await stream.writeSSE({ event: 'error', data: JSON.stringify({ message: (err as Error).message }) });
+          await stream.sleep(config.livePollMs * 3);
+          continue;
+        }
+        const nowRunning = runs.filter((r) => !isTerminal(r.phase));
+        // Finished: was running at the last check, or wasn't there at all and
+        // already is done (a short run, between two checks). Config changes
+        // aren't runs anyone waits for.
+        const finished = first
+          ? []
+          : runs.filter((r) => isTerminal(r.phase) && !CHANGE_KINDS.has(r.kind) && (running.has(r.run_id) || !seen.has(r.run_id)));
+        // Anything new at the top (a run started, finished, or a config change) changes the signature.
+        const sig = runs.slice(0, 20).map((r) => `${r.run_id}:${r.phase}`).join(',');
+        if (first || sig !== lastSig || finished.length) {
+          const sites = [...new Set(runs.filter((r) => !lastSig.includes(`${r.run_id}:${r.phase}`)).map((r) => r.site))];
+          await stream.writeSSE({ event: 'live', data: JSON.stringify({ running: nowRunning, finished, changed_sites: first ? [] : sites }) });
+          lastSig = sig;
+        }
+        running = new Map(nowRunning.map((r) => [r.run_id, r]));
+        seen = new Set(runs.map((r) => r.run_id));
+        first = false;
+        await beat();
+        await stream.sleep(config.livePollMs);
+      }
+    });
   });
 
   srv.get('/runs/:id', async (c) => {

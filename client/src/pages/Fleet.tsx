@@ -3,7 +3,7 @@ import { countStatuses, type CheckStatus, type SiteSummary } from '@webddeploy/s
 import { ExternalLink, RefreshCw, Rocket, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Commit, Trigger } from '../components/RunTable.tsx';
-import { Badge, Card, ConfirmButton, Empty, ErrorBox, PhaseBadge, Spinner, StatusDot, Td, Th, cx, inputClass } from '../components/ui.tsx';
+import { Badge, Card, ConfirmButton, Empty, ErrorBox, PhaseBadge, Spinner, StatusDot, Td, Th, cx, inputClass, InlineError } from '../components/ui.tsx';
 import { dateTime, kindLabel, relativeTime, shortSha } from '../lib/format.ts';
 import { useDeploy, useDoctor, useInfo, useRecentRuns, useRefreshFleet, useSites } from '../lib/api.ts';
 import { RunTable } from '../components/RunTable.tsx';
@@ -208,7 +208,7 @@ function SiteRow({ server, site, previews, nested, status }: { server: string; s
             }
           />
         )}
-        {deploy.error && <p className="mt-1 text-xs text-red-700">{deploy.error.message}</p>}
+        {deploy.error && <InlineError error={deploy.error} className="mt-1 text-xs text-red-700" />}
       </Td>
     </tr>
   );
@@ -226,7 +226,7 @@ function ServerCard({ server }: { server: string }) {
         {doctor.isPending ? (
           <p className="mt-2 text-sm text-stone-500">Running checks…</p>
         ) : doctor.error ? (
-          <p className="mt-2 text-sm text-red-700">{doctor.error.message}</p>
+          <InlineError error={doctor.error} className="mt-2 text-sm text-red-700" />
         ) : (
           <Link to="/s/$server/status" params={{ server }} className="mt-2 block">
             <div className="flex items-center gap-2 text-lg font-semibold">

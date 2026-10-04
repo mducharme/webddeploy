@@ -4,7 +4,7 @@ import type { Preview } from '@webddeploy/shared';
 import { ExternalLink, GitBranchPlus, RefreshCw, Trash2 } from 'lucide-react';
 import { useState } from 'react';
 import { Commit, RunTable } from '../components/RunTable.tsx';
-import { Badge, Button, Card, ConfirmButton, Empty, ErrorBox, Field, Spinner, Td, Th, inputClass } from '../components/ui.tsx';
+import { Badge, Button, Card, ConfirmButton, Empty, ErrorBox, Field, Spinner, Td, Th, inputClass, InlineError } from '../components/ui.tsx';
 import { useBranches, useInfo, usePreviewRun, usePreviews } from '../lib/api.ts';
 import { relativeTime } from '../lib/format.ts';
 import { Can, useCan } from '../lib/role.tsx';
@@ -109,7 +109,7 @@ function NewPreview({ server, project, taken }: { server: string; project: strin
         >
           Create preview{branch ? ` of ${branch}` : ''}
         </Button>
-        {create.error && <span className="text-sm text-red-700">{create.error.message}</span>}
+        {create.error && <InlineError error={create.error} className="text-sm text-red-700" />}
       </div>
     </Card>
   );

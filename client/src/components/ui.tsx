@@ -1,5 +1,6 @@
-import type { CheckStatus, RunPhase } from '@webddeploy/shared';
+import type { CheckStatus, Hint, RunPhase } from '@webddeploy/shared';
 import { Loader2 } from 'lucide-react';
+import { explainError } from '../lib/errors.ts';
 import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
 export function cx(...parts: Array<string | false | null | undefined>): string {
@@ -177,13 +178,31 @@ export function Spinner({ label = 'Loading…' }: { label?: string }) {
   );
 }
 
-export function ErrorBox({ error, title = 'Something went wrong' }: { error: unknown; title?: string }) {
-  const message = error instanceof Error ? error.message : String(error);
+export function ErrorBox({ error, title = 'Something went wrong', hint: given }: { error: unknown; title?: string; hint?: Hint | null }) {
+  const explained = explainError(error);
+  const message = explained.message;
+  const hint = explained.hint ?? given ?? null;
   return (
     <div role="alert" className="m-4 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
       <p className="font-medium">{title}</p>
       <p className="mt-1 break-words">{message}</p>
+      {hint && (
+        <p className="mt-2 border-t border-red-200 pt-2 text-red-800 dark:border-red-900 dark:text-red-300" data-testid="error-hint">
+          <span className="font-medium">{hint.cause}</span> {hint.next}
+        </p>
+      )}
     </div>
+  );
+}
+
+/** An error in a line of its own (under a button), with its hint when there is one. */
+export function InlineError({ error, className }: { error: unknown; className?: string }) {
+  const { message, hint } = explainError(error);
+  return (
+    <span role="alert" className={cx('block', className)}>
+      {message}
+      {hint && <span className="block text-stone-600 dark:text-stone-400" data-testid="error-hint">{hint.next}</span>}
+    </span>
   );
 }
 

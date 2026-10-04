@@ -1,7 +1,7 @@
 import { SECRET_KEY, needsQuotes } from '@webddeploy/shared';
 import { Eye, EyeOff, Plus, Trash2, Undo2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
-import { Badge, Button, Card, ErrorBox, Mono, Spinner, cx, inputClass } from '../components/ui.tsx';
+import { Badge, Button, Card, ErrorBox, Mono, Spinner, cx, inputClass, InlineError } from '../components/ui.tsx';
 import { revealEnv, useApplyEnv, useEnv } from '../lib/api.ts';
 import { applyPasted, diff, parsePasted, rowError, rowsFrom, type EnvRow } from '../lib/envEdit.ts';
 import { DeployNowButton } from './siteShared.tsx';
@@ -170,7 +170,7 @@ export function EnvTab({ server, name, isPreview }: { server: string; name: stri
               Saved — live now. <DeployNowButton server={server} name={name} label="Deploy to clear cached config" />
             </span>
           )}
-          {apply.error && <span className="text-sm text-red-700">{apply.error.message}</span>}
+          {apply.error && <InlineError error={apply.error} className="text-sm text-red-700" />}
         </div>
       </Card>
     </div>
