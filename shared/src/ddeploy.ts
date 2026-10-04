@@ -96,7 +96,8 @@ export type SiteSummary = z.infer<typeof siteSummary>;
 /** `api site-names`: just the names, instantly — the list shows these while `sites` loads. */
 export const siteNamesResponse = z.object({
   api_version: z.number(),
-  sites: z.array(z.object({ name: z.string(), preview: z.object({ project: z.string() }).nullable() })),
+  // url: since the list's first column shows it while loading; absent from an older ddeploy.
+  sites: z.array(z.object({ name: z.string(), url: z.string().optional(), preview: z.object({ project: z.string() }).nullable() })),
 });
 export type SiteNamesResponse = z.infer<typeof siteNamesResponse>;
 

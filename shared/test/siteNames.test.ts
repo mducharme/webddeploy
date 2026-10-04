@@ -5,6 +5,7 @@ import { siteNamesResponse } from '../src/index.ts';
 describe('site-names', () => {
   it('real ddeploy output parses', () => {
     const r = siteNamesResponse.parse(JSON.parse(readFileSync(new URL('./fixtures/site-names.json', import.meta.url), 'utf8')));
-    expect(r.sites[0]).toEqual({ name: 'testsite', preview: null });
+    expect(r.sites[0]).toEqual({ name: 'testsite', url: 'https://testsite.staging.ddeploy.test', preview: null });
+    expect(r.sites[1]!.preview).toEqual({ project: 'testsite' });
   });
 });

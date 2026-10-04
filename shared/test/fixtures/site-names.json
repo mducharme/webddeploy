@@ -3,7 +3,15 @@
     "sites": [
         {
             "name": "testsite",
+            "url": "https://testsite.staging.ddeploy.test",
             "preview": null
+        },
+        {
+            "name": "testsite-alt-main",
+            "url": "https://testsite-alt-main.staging.ddeploy.test",
+            "preview": {
+                "project": "testsite"
+            }
         }
     ]
 }

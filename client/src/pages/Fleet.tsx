@@ -149,28 +149,61 @@ export function Fleet() {
   );
 }
 
-/** The site names, already clickable, while their details load. */
+/** The site names, already clickable, while their details load — in the same table as the full list. */
 function PendingSites({ server, names, query, showPreviews }: { server: string; names: SiteNamesResponse['sites']; query: string; showPreviews: boolean }) {
   const q = query.trim().toLowerCase();
-  const shown = names.filter((n) => (showPreviews || !n.preview) && (!q || n.name.toLowerCase().includes(q)));
-  const bar = (w: string) => <span className={cx('inline-block h-3 animate-pulse rounded bg-stone-200 dark:bg-stone-800', w)} />;
+  const projects = names.filter((n) => !n.preview);
+  const previewsOf = (p: string) => names.filter((n) => n.preview?.project === p);
+  const rows = projects
+    .filter((p) => !q || p.name.toLowerCase().includes(q) || previewsOf(p.name).some((n) => n.name.toLowerCase().includes(q)))
+    .flatMap((p) => [{ n: p, nested: false, previews: previewsOf(p.name).length }, ...(showPreviews ? previewsOf(p.name).map((n) => ({ n, nested: true, previews: 0 })) : [])]);
+  const bar = (w: string) => <span className={cx('inline-block h-2.5 animate-pulse rounded bg-stone-200 align-middle dark:bg-stone-800', w)} />;
   return (
     <div data-testid="pending-sites">
-      <p className="flex items-center gap-2 border-b border-stone-100 px-4 py-2 text-xs text-stone-500 dark:border-stone-800">
+      <p className="flex items-center gap-2 border-b border-stone-100 px-4 py-2 text-xs text-stone-500 md:hidden dark:border-stone-800">
         <Loader2 className="size-3.5 animate-spin" aria-hidden /> Loading deploys and runs…
       </p>
-      <ul className="divide-y divide-stone-100 dark:divide-stone-800">
-        {shown.map((n) => (
-          <li key={n.name} className={cx('flex items-center gap-4 px-4 py-3', n.preview && 'pl-9')}>
-            <StatusDot status="pending" label="checking…" />
-            <Link to="/s/$server/sites/$name" params={{ server, name: n.name }} className="w-48 shrink-0 truncate font-medium hover:underline">
-              {n.name}
-            </Link>
-            {n.preview && <Badge tone="neutral">preview of {n.preview.project}</Badge>}
-            <span className="hidden flex-1 items-center gap-6 md:flex">{bar('w-56')}{bar('w-28')}{bar('w-24')}</span>
+      <ul className="divide-y divide-stone-100 md:hidden dark:divide-stone-800">
+        {rows.map(({ n, nested, previews }) => (
+          <li key={n.name} className={cx('flex items-start gap-2 px-4 py-3', nested && 'pl-8')}>
+            <span className="mt-1.5"><StatusDot status="pending" label="checking…" /></span>
+            <SiteNameCell server={server} name={n.name} url={n.url} preview={n.preview ? 'preview' : null} previews={previews} nested={false} />
           </li>
         ))}
       </ul>
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full min-w-[48rem]">
+          <thead className="border-b border-stone-200 dark:border-stone-800">
+            <tr>
+              <Th className="w-8" />
+              <Th>Site</Th>
+              <Th>Live</Th>
+              <Th>Deployed</Th>
+              <Th>Last run</Th>
+              {/* In the header, not above the table: the rows don't move when the details arrive. */}
+              <Th className="text-right">
+                <span className="inline-flex items-center gap-1 leading-none normal-case"><Loader2 className="size-3 animate-spin" aria-hidden /> Loading…</span>
+              </Th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+            {rows.map(({ n, nested, previews }) => (
+              <tr key={n.name}>
+                <Td>
+                  <span className="mt-1.5 inline-block"><StatusDot status="pending" label="checking…" /></span>
+                </Td>
+                <Td>
+                  <SiteNameCell server={server} name={n.name} url={n.url} preview={n.preview ? 'preview' : null} previews={previews} nested={nested} />
+                </Td>
+                <Td><div className="space-y-1">{bar('w-16')}<div>{bar('w-64')}</div></div></Td>
+                <Td><div className="space-y-1">{bar('w-24')}<div>{bar('w-20')}</div></div></Td>
+                <Td><div className="space-y-1">{bar('w-20')}<div>{bar('w-28')}</div></div></Td>
+                <Td />
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
@@ -218,6 +251,25 @@ function SiteCard({ server, site, previews, nested, status }: { server: string; 
   );
 }
 
+/** The Site column: the same while details load and after, so nothing jumps. */
+function SiteNameCell({ server, name, url, preview, previews, nested }: { server: string; name: string; url?: string; preview: string | null; previews: number; nested: boolean }) {
+  return (
+    <div className={nested ? 'pl-5' : ''}>
+      <Link to="/s/$server/sites/$name" params={{ server, name }} className="font-medium hover:underline">
+        {name}
+      </Link>
+      {preview && <span className="ml-2"><Badge tone="neutral">{preview}</Badge></span>}
+      {previews > 0 && <span className="ml-2 text-xs text-stone-500">{previews} preview{previews > 1 ? 's' : ''}</span>}
+      {/* An older ddeploy's site-names has no url: just the name then. */}
+      {url && (
+        <a href={url} target="_blank" rel="noreferrer" className="mt-0.5 flex items-center gap-1 text-xs text-stone-500 hover:text-teal-700">
+          {url.replace('https://', '')} <ExternalLink className="size-3" aria-hidden />
+        </a>
+      )}
+    </div>
+  );
+}
+
 function SiteRow({ server, site, previews, nested, status }: { server: string; site: SiteSummary; previews: number; nested: boolean; status: CheckStatus | 'pending' }) {
   const deploy = useDeploy(server);
   const navigate = useNavigate();
@@ -235,16 +287,7 @@ function SiteRow({ server, site, previews, nested, status }: { server: string; s
         </span>
       </Td>
       <Td>
-        <div className={nested ? 'pl-5' : ''}>
-          <Link to="/s/$server/sites/$name" params={{ server, name: site.name }} className="font-medium hover:underline">
-            {site.name}
-          </Link>
-          {site.preview && <span className="ml-2"><Badge tone="neutral">preview · {site.preview.mode}</Badge></span>}
-          {previews > 0 && <span className="ml-2 text-xs text-stone-500">{previews} preview{previews > 1 ? 's' : ''}</span>}
-          <a href={site.url} target="_blank" rel="noreferrer" className="mt-0.5 flex items-center gap-1 text-xs text-stone-500 hover:text-teal-700">
-            {site.url.replace('https://', '')} <ExternalLink className="size-3" aria-hidden />
-          </a>
-        </div>
+        <SiteNameCell server={server} name={site.name} url={site.url} preview={site.preview ? `preview · ${site.preview.mode}` : null} previews={previews} nested={nested} />
       </Td>
       <Td className="max-w-sm">
         <div className="text-xs text-stone-500">{site.branch ?? 'detached'}</div>
