@@ -1,5 +1,6 @@
 import { useParams } from '@tanstack/react-router';
 import { APPLY_LABELS, SERVER_SETTINGS, type ServerConfigResponse, type ServerSettingDef } from '@webddeploy/shared';
+import { ChangeSummary, type Change } from '../components/ChangeSummary.tsx';
 import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Card, ErrorBox, Field, Mono, Spinner, cx, inputClass, InlineError } from '../components/ui.tsx';
 import { useServerConfig, useSetServerConfig } from '../lib/api.ts';
@@ -14,6 +15,19 @@ export function configChanges(config: ServerConfigResponse, drafts: Record<strin
   }
   for (const [k, v] of Object.entries(drafts)) if (k.endsWith(':clear') && v === '1') out[k.slice(0, -6)] = '';
   return out;
+}
+
+/** The changes as a list to review, and when they take effect. */
+export function serverSettingChanges(config: ServerConfigResponse, changes: Record<string, string>): { list: Change[]; note: string } {
+  const list: Change[] = [];
+  const applies = new Set<string>();
+  for (const [key, to] of Object.entries(changes)) {
+    const def = SERVER_SETTINGS.find((d) => d.key === key);
+    const current = config.settings.find((s) => s.key === key);
+    if (current) applies.add(APPLY_LABELS[current.apply]);
+    list.push({ label: def?.label ?? key, kind: to === '' && current?.secret ? 'removed' : 'changed', from: current?.secret ? (current.is_set ? 'x' : '') : current?.value, to, secret: current?.secret });
+  }
+  return { list, note: `applies ${[...applies].join('; ')}` };
 }
 
 export function ServerSettingsPage() {
@@ -66,6 +80,11 @@ export function ServerSettingsPage() {
       </Card>
       {(n > 0 || saved || save.error) && (
         <div className="sticky bottom-0 flex flex-wrap items-center gap-3 rounded-lg border border-stone-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-stone-800 dark:bg-stone-900/95">
+          {n > 0 && (
+            <div className="w-full">
+              <ChangeSummary changes={serverSettingChanges(c, changes).list} note={serverSettingChanges(c, changes).note} />
+            </div>
+          )}
           <Button
             variant="primary"
             disabled={n === 0 || Object.keys(errors).length > 0}

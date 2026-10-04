@@ -50,6 +50,7 @@ export function ConfirmButton({
   busy,
   disabled,
   icon,
+  typeToConfirm,
 }: {
   /** May return a promise: the button then stays busy until it settles (the row gone, the list reloaded). */
   onConfirm: () => void | Promise<unknown>;
@@ -60,19 +61,34 @@ export function ConfirmButton({
   busy?: boolean;
   disabled?: boolean;
   icon?: ReactNode;
+  /** Replacing or deleting live data: the site's name must be typed first. */
+  typeToConfirm?: string;
 }) {
   const [asking, setAsking] = useState(false);
+  const [typed, setTyped] = useState('');
   const [working, setWorking] = useState(false);
   const mounted = useRef(true);
   useEffect(() => () => void (mounted.current = false), []);
   const isBusy = busy || working;
   if (asking && !isBusy) {
     return (
-      <span className="inline-flex items-center gap-1">
+      <span className="inline-flex flex-wrap items-center justify-end gap-1">
+        {typeToConfirm && (
+          <input
+            autoFocus
+            value={typed}
+            onChange={(e) => setTyped(e.target.value)}
+            placeholder={`Type ${typeToConfirm}`}
+            aria-label={`Type ${typeToConfirm} to confirm`}
+            className="w-36 rounded-md border border-stone-300 bg-white px-2 py-1 text-sm dark:border-stone-700 dark:bg-stone-900"
+          />
+        )}
         <Button
-          variant="primary"
+          variant={typeToConfirm ? 'danger' : 'primary'}
+          disabled={!!typeToConfirm && typed.trim() !== typeToConfirm}
           onClick={() => {
             setAsking(false);
+            setTyped('');
             const p = onConfirm();
             if (p && typeof (p as Promise<unknown>).then === 'function') {
               setWorking(true);
@@ -83,7 +99,7 @@ export function ConfirmButton({
         >
           {confirmLabel}
         </Button>
-        <Button variant="ghost" onClick={() => setAsking(false)}>
+        <Button variant="ghost" onClick={() => { setAsking(false); setTyped(''); }}>
           Cancel
         </Button>
       </span>

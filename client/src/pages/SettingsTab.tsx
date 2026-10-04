@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Card, Field, Mono, cx, inputClass, InlineError } from '../components/ui.tsx';
 import { useApplySettings, useBranches } from '../lib/api.ts';
 import { DeployNowButton } from './siteShared.tsx';
+import { ChangeSummary, type Change } from '../components/ChangeSummary.tsx';
 import { useCan } from '../lib/role.tsx';
 
 type Value = string | string[];
@@ -28,6 +29,20 @@ export function settingsChange(
     } else if (d.trim() !== toText(effective[def.key])) set[def.key] = d.trim();
   }
   return { set, unset: [...resets], ...(branch !== undefined ? { branch } : {}) };
+}
+
+/** The request as a list to review: labels, current → new, resets, the branch. */
+export function settingsChanges(defs: readonly SettingDef[], effective: Record<string, Value>, req: SettingsRequest, currentBranch: string | null): Change[] {
+  const out: Change[] = [];
+  for (const [key, value] of Object.entries(req.set ?? {})) {
+    const def = defs.find((d) => d.key === key);
+    out.push({ label: def?.label ?? key, kind: 'changed', from: toText(effective[key]), to: Array.isArray(value) ? value.join(' ') : String(value) });
+  }
+  for (const key of req.unset ?? []) {
+    out.push({ label: `${defs.find((d) => d.key === key)?.label ?? key} override`, kind: 'removed' });
+  }
+  if (req.branch !== undefined) out.push({ label: 'Branch', kind: 'changed', from: currentBranch, to: req.branch ?? '(the repository default)' });
+  return out;
 }
 
 export function SettingsTab({ server, detail }: { server: string; detail: SiteDetailResponse }) {
@@ -139,6 +154,11 @@ export function SettingsTab({ server, detail }: { server: string; detail: SiteDe
         </Card>
       ))}
       {(dirty || saved || apply.error) && <div className="sticky bottom-0 flex flex-wrap items-center gap-3 rounded-lg border border-stone-200 bg-white/95 px-4 py-3 backdrop-blur dark:border-stone-800 dark:bg-stone-900/95">
+        {dirty && (
+          <div className="w-full">
+            <ChangeSummary changes={settingsChanges(SETTINGS, effective, change, detail.deploy_branch ?? detail.site.branch)} note="they apply on the next deploy" />
+          </div>
+        )}
         <Button variant="primary" disabled={!dirty || Object.keys(errors).length > 0} busy={apply.isPending} onClick={() => apply.mutate(change, { onSuccess: () => setSaved(true) })}>
           Save settings
         </Button>

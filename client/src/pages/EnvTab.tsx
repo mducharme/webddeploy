@@ -4,7 +4,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Card, ErrorBox, Mono, Spinner, cx, inputClass, InlineError } from '../components/ui.tsx';
 import { ApiError, revealEnv, useApplyEnv, useEnv } from '../lib/api.ts';
 import { ConfigFiles } from './ConfigFiles.tsx';
-import { applyPasted, diff, parsePasted, rowError, rowsFrom, type EnvRow } from '../lib/envEdit.ts';
+import { applyPasted, diff, envChanges, parsePasted, rowError, rowsFrom, type EnvRow } from '../lib/envEdit.ts';
+import { ChangeSummary } from '../components/ChangeSummary.tsx';
 import { DeployNowButton } from './siteShared.tsx';
 
 /**
@@ -180,6 +181,11 @@ function EnvEditor({ server, name, isPreview }: { server: string; name: string; 
             );
           })}
         </div>
+        {dirty && (
+          <div className="border-t border-stone-200 px-4 pt-3 dark:border-stone-800">
+            <ChangeSummary changes={envChanges(rows, (k) => SECRET_KEY.test(k))} note="PHP reads the .env on its next request" />
+          </div>
+        )}
         <div className="flex flex-wrap items-center gap-3 border-t border-stone-200 px-4 py-3 dark:border-stone-800">
           <Button variant="primary" disabled={!dirty || invalid} busy={apply.isPending} onClick={save}>
             Save {dirty ? `${Object.keys(change.set).length + change.unset.length} change(s)` : ''}

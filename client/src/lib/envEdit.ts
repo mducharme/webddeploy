@@ -1,3 +1,4 @@
+import type { Change } from '../components/ChangeSummary.tsx';
 import { patterns, type EnvChangeRequest } from '@webddeploy/shared';
 import type { MaskedEnvEntry } from './api.ts';
 
@@ -71,4 +72,20 @@ export function applyPasted(rows: readonly EnvRow[], pairs: ReadonlyArray<{ key:
     else next.push({ key, original: null, masked: false, managed: false, length: 0, draft: value, deleted: false, isNew: true });
   }
   return next;
+}
+
+/** The rows' changes as a list to review before saving (secret-looking values stay masked). */
+export function envChanges(rows: readonly EnvRow[], isSecret: (key: string) => boolean): Change[] {
+  const out: Change[] = [];
+  for (const r of rows) {
+    const secret = r.masked || isSecret(r.key);
+    if (r.deleted) {
+      if (!r.isNew) out.push({ label: r.key, kind: 'removed', secret });
+    } else if (r.isNew) {
+      if (r.key) out.push({ label: r.key, kind: 'added', to: r.draft ?? '', secret });
+    } else if (r.draft !== null && r.draft !== r.original) {
+      out.push({ label: r.key, kind: 'changed', from: r.original, to: r.draft, secret });
+    }
+  }
+  return out;
 }

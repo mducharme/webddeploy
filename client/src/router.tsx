@@ -29,15 +29,29 @@ function Home() {
 
 const indexRoute = createRoute({ getParentRoute: () => rootRoute, path: '/', component: Home });
 const serverRoute = createRoute({ getParentRoute: () => rootRoute, path: 's/$server' });
-const fleetRoute = createRoute({ getParentRoute: () => serverRoute, path: '/', component: Fleet });
+const fleetRoute = createRoute({
+  getParentRoute: () => serverRoute,
+  path: '/',
+  component: Fleet,
+  validateSearch: z.object({
+    q: z.string().optional().catch(undefined),
+    view: z.enum(['all', 'attention', 'running']).optional().catch(undefined),
+    previews: z.boolean().optional().catch(undefined),
+  }),
+});
 const siteRoute = createRoute({
   getParentRoute: () => serverRoute,
   path: 'sites/$name',
-  validateSearch: z.object({ tab: z.enum(SITE_TABS).default('overview').catch('overview') }),
+  validateSearch: z.object({ tab: z.enum(SITE_TABS).default('overview').catch('overview'), log: z.enum(['error', 'access']).optional().catch(undefined) }),
   component: SitePage,
 });
 const runRoute = createRoute({ getParentRoute: () => serverRoute, path: 'runs/$id', component: RunPage });
-const statusRoute = createRoute({ getParentRoute: () => serverRoute, path: 'status', component: Status });
+const statusRoute = createRoute({
+  getParentRoute: () => serverRoute,
+  path: 'status',
+  component: Status,
+  validateSearch: z.object({ all: z.boolean().optional().catch(undefined) }),
+});
 const logsRoute = createRoute({
   getParentRoute: () => serverRoute,
   path: 'logs',
@@ -48,7 +62,17 @@ const backupsRoute = createRoute({ getParentRoute: () => serverRoute, path: 'bac
 const serverSettingsRoute = createRoute({ getParentRoute: () => serverRoute, path: 'server-settings', component: ServerSettingsPage });
 const usersRoute = createRoute({ getParentRoute: () => rootRoute, path: 'admin/users', component: UsersPage });
 const provisionRoute = createRoute({ getParentRoute: () => serverRoute, path: 'provision', component: Provision });
-const activityRoute = createRoute({ getParentRoute: () => rootRoute, path: 'activity', component: ActivityPage });
+const activityRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  path: 'activity',
+  component: ActivityPage,
+  validateSearch: z.object({
+    tab: z.enum(['all', 'web']).optional().catch(undefined),
+    site: z.string().optional().catch(undefined),
+    source: z.enum(['web', 'webhook', 'schedule', 'manual']).optional().catch(undefined),
+    failed: z.boolean().optional().catch(undefined),
+  }),
+});
 
 export const routeTree = rootRoute.addChildren([
   indexRoute,

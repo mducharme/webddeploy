@@ -15,6 +15,7 @@ import { SettingsTab } from './SettingsTab.tsx';
 import { DeployNowButton } from './siteShared.tsx';
 import { useCan } from '../lib/role.tsx';
 import { RefreshBar } from '../components/RefreshBar.tsx';
+import { useSearchState } from '../lib/searchState.ts';
 import { PreviewActions, PreviewsTab } from './PreviewsTab.tsx';
 import { Badge, Button, Card, Empty, ErrorBox, Mono, Spinner, StatusDot, Tabs } from '../components/ui.tsx';
 import { logStreamUrl, useDoctor, useLogs, useRefreshSite, useSite } from '../lib/api.ts';
@@ -113,7 +114,7 @@ function LogStreamInner({ server, name, title, onReconnect }: { server: string; 
       }
     >
       {stream.error && <ErrorBox error={stream.error} title="Couldn't read the log" />}
-      <LogView text={stream.text} placeholder={stream.loaded ? emptyLogText(name) : 'Loading the log…'} className="rounded-b-lg" />
+      <LogView filename={`${name}.log`} text={stream.text} placeholder={stream.loaded ? emptyLogText(name) : 'Loading the log…'} className="rounded-b-lg" />
     </Card>
   );
 }
@@ -126,7 +127,9 @@ const SITE_LOGS = [
 
 /** A site's three logs, one at a time. */
 export function SiteLog({ server, name }: { server: string; name: string }) {
-  const [which, setWhich] = useState<(typeof SITE_LOGS)[number]['suffix']>('');
+  const [log, setLog] = useSearchState<'' | 'error' | 'access'>('log', '');
+  const which = (log ? `.${log}` : '') as (typeof SITE_LOGS)[number]['suffix'];
+  const setWhich = (s: (typeof SITE_LOGS)[number]['suffix']) => setLog(s.slice(1) as '' | 'error' | 'access');
   const logs = useLogs(server);
   const logName = name + which;
   const exists = logs.data ? logs.data.logs.some((l) => l.name === logName) : true;

@@ -246,7 +246,7 @@ function Dumps({ server, name, b, first }: { server: string; name: string; b: Ba
                         {d.kept ? <PinOff className="size-4" aria-hidden /> : <Pin className="size-4" aria-hidden />}
                         <span className="sr-only">{d.kept ? 'Stop keeping' : 'Keep'} {d.file}</span>
                       </Button>
-                      <ConfirmButton label="Restore" busyLabel="Restoring…" confirmLabel="Replace the database with this" onConfirm={() => restore.mutateAsync({ site: name, body: { file: d.file } }, { onSuccess: go })} />
+                      <ConfirmButton label="Restore" busyLabel="Restoring…" confirmLabel="Replace the database with this" typeToConfirm={name} onConfirm={() => restore.mutateAsync({ site: name, body: { file: d.file } }, { onSuccess: go })} />
                       <ConfirmButton label="Delete" busyLabel="Deleting…" confirmLabel="Delete this dump" icon={<Trash2 className="size-4" aria-hidden />} onConfirm={() => manage.mutateAsync({ action: 'delete', file: d.file })} />
                     </span>}
                   </Td>
@@ -285,6 +285,7 @@ function Files({ server, name, b, first }: { server: string; name: string; b: Ba
             {canAct && !!m.files && <ConfirmButton
               label="Restore folder" busyLabel="Restoring…"
               confirmLabel={`Replace ${m.dir} with the backup`}
+              typeToConfirm={name}
               onConfirm={() => restore.mutateAsync({ site: name, body: { dir: m.dir } }, { onSuccess: go })}
             />}
           </div>

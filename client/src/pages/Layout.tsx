@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { Link, Outlet, useParams } from '@tanstack/react-router';
-import { Activity, Archive, ChevronDown, FileText, HeartPulse, LayoutGrid, LogOut, Plus, Settings2, Users } from 'lucide-react';
+import { Activity, Archive, ChevronDown, FileText, HeartPulse, LayoutGrid, LogOut, Menu as MenuIcon, Plus, Settings2, Users, X } from 'lucide-react';
 import { ROLE_LABELS } from '@webddeploy/shared';
 import { Can } from '../lib/role.tsx';
 import { RunningIndicator } from '../components/RunningIndicator.tsx';
@@ -18,13 +18,14 @@ export function Root() {
   return <Shell>{<Outlet />}</Shell>;
 }
 
-function NavLink({ to, params, icon, children }: { to: string; params?: Record<string, string>; icon: ReactNode; children: ReactNode }) {
+function NavLink({ to, params, icon, children, block, onClick }: { to: string; params?: Record<string, string>; icon: ReactNode; children: ReactNode; block?: boolean; onClick?: () => void }) {
   return (
     <Link
       to={to}
       params={params}
+      onClick={onClick}
       activeOptions={{ exact: to.endsWith('$server') }}
-      className="inline-flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-sm text-stone-600 hover:bg-stone-200/60 dark:text-stone-300 dark:hover:bg-stone-800"
+      className={`${block ? 'flex w-full px-3 py-2' : 'inline-flex px-2.5 py-1.5'} items-center gap-1.5 rounded-md text-sm text-stone-600 hover:bg-stone-200/60 dark:text-stone-300 dark:hover:bg-stone-800`}
       activeProps={{ className: 'bg-stone-200/80 text-stone-900 dark:bg-stone-800 dark:text-white' }}
     >
       {icon}
@@ -39,42 +40,76 @@ function Shell({ children }: { children: ReactNode }) {
   const server = params.server ?? me.servers[0]?.id ?? 'local';
   const serverName = me.servers.find((s) => s.id === server)?.name ?? server;
   useLiveStream(server);
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div className="min-h-screen">
       <header className="border-b border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
-        <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-x-4 gap-y-2 px-4 py-2">
-          <Link to="/s/$server" params={{ server }} className="flex items-center gap-2 font-semibold">
+        <div className="mx-auto flex max-w-7xl items-center gap-x-4 px-4 py-2">
+          <Link to="/s/$server" params={{ server }} className="flex min-w-0 items-center gap-2 font-semibold">
             <img src="/favicon.svg" alt="" className="size-6" />
             ddeploy
-            <span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs font-normal text-stone-600 dark:bg-stone-800 dark:text-stone-300">{serverName}</span>
+            <span className="truncate rounded bg-stone-100 px-1.5 py-0.5 text-xs font-normal text-stone-600 dark:bg-stone-800 dark:text-stone-300">{serverName}</span>
           </Link>
-          <nav className="flex flex-1 flex-wrap items-center gap-1">
-            <NavLink to="/s/$server" params={{ server }} icon={<LayoutGrid className="size-4" />}>Sites</NavLink>
-            <NavLink to="/s/$server/status" params={{ server }} icon={<HeartPulse className="size-4" />}>Status</NavLink>
-            <NavLink to="/s/$server/logs" params={{ server }} icon={<FileText className="size-4" />}>Logs</NavLink>
-            <NavLink to="/s/$server/backups" params={{ server }} icon={<Archive className="size-4" />}>Backups</NavLink>
-            <NavLink to="/activity" icon={<Activity className="size-4" />}>Activity</NavLink>
+          {/* Laptop and up: everything in one line. */}
+          <nav className="hidden flex-1 items-center gap-1 lg:flex">
+            <NavLinks server={server} />
             <Can role="superadmin"><AdminMenu server={server} /></Can>
           </nav>
-          <RunningIndicator server={server} />
+          <span className="ml-auto lg:ml-0"><RunningIndicator server={server} /></span>
           <Can role="admin">
-            <Link to="/s/$server/provision" params={{ server }}>
+            <Link to="/s/$server/provision" params={{ server }} className="hidden lg:block">
               <Button variant="primary"><Plus className="size-4" /> New site</Button>
             </Link>
           </Can>
-          <div className="flex items-center gap-2 text-sm">
+          <div className="hidden items-center gap-2 text-sm lg:flex">
             {me.picture && <img src={me.picture} alt="" className="size-7 rounded-full" referrerPolicy="no-referrer" />}
-            <span className="hidden text-stone-600 sm:inline dark:text-stone-300">{me.email}</span>
-            <span className="rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-600 dark:bg-stone-800 dark:text-stone-300">{ROLE_LABELS[me.role]}</span>
+            <span className="hidden text-stone-600 2xl:inline dark:text-stone-300">{me.email}</span>
+            <span title={me.email} className="rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-600 dark:bg-stone-800 dark:text-stone-300">{ROLE_LABELS[me.role]}</span>
             <Button variant="ghost" onClick={() => void signOut()} aria-label="Sign out" title="Sign out">
               <LogOut className="size-4" />
             </Button>
           </div>
+          {/* Phones and tablets: a menu. */}
+          <Button variant="ghost" className="lg:hidden" aria-expanded={menuOpen} aria-label="Menu" onClick={() => setMenuOpen((o) => !o)}>
+            {menuOpen ? <X className="size-5" /> : <MenuIcon className="size-5" />}
+          </Button>
         </div>
+        {menuOpen && (
+          <div className="border-t border-stone-200 px-4 py-2 lg:hidden dark:border-stone-800" data-testid="mobile-menu">
+            <nav className="flex flex-col">
+              <NavLinks server={server} block onClick={() => setMenuOpen(false)} />
+              <Can role="superadmin">
+                <NavLink to="/s/$server/server-settings" params={{ server }} icon={<Settings2 className="size-4" />} block onClick={() => setMenuOpen(false)}>Server settings</NavLink>
+                <NavLink to="/admin/users" icon={<Users className="size-4" />} block onClick={() => setMenuOpen(false)}>Users</NavLink>
+              </Can>
+            </nav>
+            <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-stone-200 pt-2 text-sm dark:border-stone-800">
+              <Can role="admin">
+                <Link to="/s/$server/provision" params={{ server }} onClick={() => setMenuOpen(false)}>
+                  <Button variant="primary"><Plus className="size-4" /> New site</Button>
+                </Link>
+              </Can>
+              <span className="min-w-0 flex-1 truncate text-stone-600 dark:text-stone-300">{me.email} · {ROLE_LABELS[me.role]}</span>
+              <Button variant="ghost" onClick={() => void signOut()}><LogOut className="size-4" /> Sign out</Button>
+            </div>
+          </div>
+        )}
       </header>
       <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
       <Toaster />
     </div>
+  );
+}
+
+function NavLinks({ server, block, onClick }: { server: string; block?: boolean; onClick?: () => void }) {
+  return (
+    <>
+      <NavLink to="/s/$server" params={{ server }} icon={<LayoutGrid className="size-4" />} block={block} onClick={onClick}>Sites</NavLink>
+      <NavLink to="/s/$server/status" params={{ server }} icon={<HeartPulse className="size-4" />} block={block} onClick={onClick}>Status</NavLink>
+      <NavLink to="/s/$server/logs" params={{ server }} icon={<FileText className="size-4" />} block={block} onClick={onClick}>Logs</NavLink>
+      <NavLink to="/s/$server/backups" params={{ server }} icon={<Archive className="size-4" />} block={block} onClick={onClick}>Backups</NavLink>
+      <NavLink to="/activity" icon={<Activity className="size-4" />} block={block} onClick={onClick}>Activity</NavLink>
+    </>
   );
 }
 

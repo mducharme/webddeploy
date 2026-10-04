@@ -111,7 +111,7 @@ export function DatabaseTab({ server, name }: { server: string; name: string }) 
                       <a href={dbDumpUrl(server, name, s.id)} download>
                         <Button variant="ghost"><Download className="size-4" aria-hidden /> Download</Button>
                       </a>
-                      <ConfirmButton label="Restore" busyLabel="Restoring…" confirmLabel={`Replace ${d.database} with this`} onConfirm={() => restore.mutateAsync({ site: name, body: { snapshot: s.id } }, { onSuccess: goRun })} />
+                      <ConfirmButton label="Restore" busyLabel="Restoring…" confirmLabel={`Replace ${d.database} with this`} typeToConfirm={name} onConfirm={() => restore.mutateAsync({ site: name, body: { snapshot: s.id } }, { onSuccess: goRun })} />
                     </span>
                   </Td>
                 </tr>

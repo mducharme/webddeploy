@@ -5,6 +5,7 @@ import { RunTable } from '../components/RunTable.tsx';
 import { Badge, Card, Empty, ErrorBox, Mono, Spinner, Tabs, Td, Th, inputClass } from '../components/ui.tsx';
 import { useActivity, useMe, useRecentRuns } from '../lib/api.ts';
 import { useCan } from '../lib/role.tsx';
+import { useSearchState } from '../lib/searchState.ts';
 import { relativeTime } from '../lib/format.ts';
 
 const ACTION_LABELS: Record<string, string> = {
@@ -86,7 +87,7 @@ const SOURCES: Record<Actor['type'], string> = { web: 'Web UI', webhook: 'Git pu
 
 export function ActivityPage() {
   const isAdmin = useCan('admin');
-  const [tab, setTab] = useState<ActivityTab>('all');
+  const [tab, setTab] = useSearchState<ActivityTab>('tab', 'all');
   const tabs = TABS.filter((t) => t.id === 'all' || isAdmin);
   return (
     <div className="space-y-4">
@@ -107,9 +108,9 @@ export function ActivityPage() {
 function AllRuns() {
   const server = useMe().data?.servers[0]?.id ?? 'local';
   const runs = useRecentRuns(server, 300);
-  const [site, setSite] = useState('');
-  const [source, setSource] = useState<'' | Actor['type']>('');
-  const [failedOnly, setFailedOnly] = useState(false);
+  const [site, setSite] = useSearchState<string>('site', '');
+  const [source, setSource] = useSearchState<'' | Actor['type']>('source', '');
+  const [failedOnly, setFailedOnly] = useSearchState<boolean>('failed', false);
   const all = runs.data?.runs ?? [];
   const sites = useMemo(() => [...new Set(all.map((r) => r.site))].sort(), [all]);
   const shown = all.filter(

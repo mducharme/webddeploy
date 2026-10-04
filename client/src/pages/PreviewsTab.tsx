@@ -153,6 +153,7 @@ export function PreviewActions({ server, project, branch, mode }: { server: stri
         <ConfirmButton
           label="Remove" busyLabel="Removing…"
           confirmLabel={mode === 'isolated' ? 'Remove it and its database' : 'Remove preview'}
+          typeToConfirm={branch}
           icon={<Trash2 className="size-4" aria-hidden />}
           busy={remove.isPending}
           onConfirm={() => remove.mutateAsync({ project, body: { branch } }, { onSuccess: go })}

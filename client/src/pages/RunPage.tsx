@@ -127,7 +127,7 @@ export function RunPage() {
       )}
 
       <Card title="Output" actions={stream.ended ? <span className="text-xs text-stone-500">finished</span> : <span className="text-xs text-stone-500">{stream.connected ? 'live' : 'connecting…'}</span>}>
-        <LogView text={stream.text} placeholder={run.phase === 'queued' ? 'Waiting for the run to start…' : 'No output yet.'} className="rounded-b-lg" />
+        <LogView filename={`${id}.log`} text={stream.text} placeholder={run.phase === 'queued' ? 'Waiting for the run to start…' : 'No output yet.'} className="rounded-b-lg" />
       </Card>
     </div>
   );

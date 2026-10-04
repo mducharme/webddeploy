@@ -8,6 +8,7 @@ import { dateTime, kindLabel, relativeTime, shortSha } from '../lib/format.ts';
 import { useDeploy, useDoctor, useInfo, useRecentRuns, useRefreshFleet, useSites } from '../lib/api.ts';
 import { RunTable } from '../components/RunTable.tsx';
 import { useCan } from '../lib/role.tsx';
+import { useSearchState } from '../lib/searchState.ts';
 import { RefreshBar } from '../components/RefreshBar.tsx';
 
 /** The newest run, config changes aside (older ddeploy: the newest event). */
@@ -28,9 +29,9 @@ export function Fleet() {
   const sites = useSites(server);
   const doctor = useDoctor(server);
   const refresh = useRefreshFleet(server);
-  const [query, setQuery] = useState('');
-  const [showPreviews, setShowPreviews] = useState(false);
-  const [view, setView] = useState<FleetView>('all');
+  const [query, setQuery] = useSearchState<string>('q', '');
+  const [showPreviews, setShowPreviews] = useSearchState<boolean>('previews', false);
+  const [view, setView] = useSearchState<FleetView>('view', 'all');
 
   const worst = useMemo(() => new Map<string, CheckStatus>(doctor.data?.sites.map((s) => [s.name, s.worst]) ?? []), [doctor.data]);
 
@@ -110,7 +111,14 @@ export function Fleet() {
         ) : rows.length === 0 ? (
           <Empty>{query || view !== 'all' ? (view === 'attention' ? 'Nothing needs attention.' : 'No site matches.') : 'No sites provisioned yet.'}</Empty>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+          {/* Phones: one card per site instead of a table to scroll sideways. */}
+          <ul className="divide-y divide-stone-100 md:hidden dark:divide-stone-800" data-testid="site-cards">
+            {rows.map(({ site, previews, nested }) => (
+              <SiteCard key={site.name} server={server} site={site} previews={previews} nested={nested} status={doctor.data ? (worst.get(site.name) ?? 'off') : 'pending'} />
+            ))}
+          </ul>
+          <div className="hidden overflow-x-auto md:block">
             <table className="w-full min-w-[48rem]">
               <thead className="border-b border-stone-200 dark:border-stone-800">
                 <tr>
@@ -129,10 +137,54 @@ export function Fleet() {
               </tbody>
             </table>
           </div>
+          </>
         )}
       </Card>
       <RecentRuns server={server} />
     </div>
+  );
+}
+
+function SiteCard({ server, site, previews, nested, status }: { server: string; site: SiteSummary; previews: number; nested: boolean; status: CheckStatus | 'pending' }) {
+  const deploy = useDeploy(server);
+  const navigate = useNavigate();
+  const canDeploy = useCan('admin');
+  const ev = lastRun(site);
+  const deployedAt = site.deployed_at ?? site.last_deploy?.ts ?? null;
+  return (
+    <li className={cx('space-y-1.5 px-4 py-3', nested && 'pl-8', (status === 'fail' || ev?.phase === 'failed') && 'bg-red-50/50 dark:bg-red-950/20')}>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <StatusDot status={status} label={status === 'pending' ? 'checking…' : `health: ${status}`} />
+            <Link to="/s/$server/sites/$name" params={{ server, name: site.name }} className="font-medium hover:underline">{site.name}</Link>
+            {site.preview && <Badge tone="neutral">preview</Badge>}
+            {previews > 0 && <span className="text-xs text-stone-500">{previews} preview{previews > 1 ? 's' : ''}</span>}
+          </div>
+          <a href={site.url} target="_blank" rel="noreferrer" className="mt-0.5 flex items-center gap-1 truncate text-xs text-stone-500">
+            {site.url.replace('https://', '')} <ExternalLink className="size-3 shrink-0" aria-hidden />
+          </a>
+        </div>
+        {!site.preview && canDeploy && (
+          <ConfirmButton
+            label="Deploy" busyLabel="Starting…"
+            confirmLabel={`Deploy ${site.name}`}
+            icon={<Rocket className="size-4" aria-hidden />}
+            busy={deploy.isPending}
+            onConfirm={() => deploy.mutateAsync(site.name, { onSuccess: ({ run_id }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } }) })}
+          />
+        )}
+      </div>
+      <div className="text-xs text-stone-500">{site.branch ?? 'detached'} · <Commit sha={site.sha} repo={site.repo} subject={site.subject} /></div>
+      <div className="flex flex-wrap gap-x-3 text-xs text-stone-500">
+        {deployedAt && <span>Deployed {relativeTime(deployedAt)}{site.last_deploy && <> by <Trigger trigger={site.last_deploy.trigger} author={site.last_deploy.author} /></>}</span>}
+        {ev && ev.run_id !== site.last_deploy?.run_id && (
+          <span className="inline-flex items-center gap-1">
+            <PhaseBadge phase={ev.phase === 'started' ? 'running' : ev.phase} /> {kindLabel(ev.kind)} {relativeTime(ev.ts)}
+          </span>
+        )}
+      </div>
+    </li>
   );
 }
 

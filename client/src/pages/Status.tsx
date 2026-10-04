@@ -7,13 +7,14 @@ import { Checks } from '../components/Checks.tsx';
 import { Button, Card, ErrorBox, Spinner, StatusDot, cx } from '../components/ui.tsx';
 import { api, keys, useDoctor } from '../lib/api.ts';
 import { relativeTime } from '../lib/format.ts';
+import { useSearchState } from '../lib/searchState.ts';
 
 export function Status() {
   const { server } = useParams({ from: '/s/$server/status' });
   const doctor = useDoctor(server);
   const qc = useQueryClient();
   const [refreshing, setRefreshing] = useState(false);
-  const [showAll, setShowAll] = useState(false);
+  const [showAll, setShowAll] = useSearchState<boolean>('all', false);
 
   const refresh = async () => {
     setRefreshing(true);
