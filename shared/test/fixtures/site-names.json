@@ -1,0 +1,9 @@
+{
+    "api_version": 1,
+    "sites": [
+        {
+            "name": "testsite",
+            "preview": null
+        }
+    ]
+}

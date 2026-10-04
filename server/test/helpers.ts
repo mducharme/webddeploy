@@ -51,6 +51,7 @@ export class FakeConnector implements Connector {
     switch (key) {
       case 'info': return fixture('info');
       case 'sites': return fixture('sites');
+      case 'site-names': return fixture('site-names');
       case 'site':
         if (args[1] === 'nope') throw new DdeployError('not_found', "'nope' is not provisioned");
         return fixture('site');

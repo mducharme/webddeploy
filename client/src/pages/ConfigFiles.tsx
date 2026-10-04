@@ -25,7 +25,7 @@ export function formatJson(text: string): string {
   return `${JSON.stringify(JSON.parse(text), null, indentOf(text))}\n`;
 }
 
-/** The file's indentation width, so the tree view writes it back the same way (2 when it can't tell). */
+/** The file's indentation width (2 when it can't tell). */
 export function indentOf(text: string): number {
   return /\n( +)"/.exec(text)?.[1]?.length ?? 2;
 }
@@ -129,16 +129,17 @@ function FileEditor({ server, name, file, target }: { server: string; name: stri
       )}
       <Suspense fallback={<Spinner label="Loading the editor…" />}>
         {file.format === 'json' ? (
-          <JsonEditor value={text} onChange={setText} indent={indentOf(loaded.content)} />
+          <JsonEditor value={text} onChange={setText} />
         ) : (
           <CodeEditor value={text} onChange={setText} format={file.format} label={`Content of ${file.path}`} />
         )}
       </Suspense>
-      {problem && <p className="text-xs text-red-700 dark:text-red-400">{problem}</p>}
+      {/* JSON errors show in the editor itself (with Auto repair); Save just waits for valid JSON. */}
       <div className="flex flex-wrap items-center gap-2">
         <Button
           variant="primary"
           disabled={!dirty || !!problem}
+          title={problem ?? undefined}
           busy={save.isPending}
           onClick={() =>
             save.mutate(
@@ -151,7 +152,7 @@ function FileEditor({ server, name, file, target }: { server: string; name: stri
         </Button>
         {dirty && <Button variant="ghost" onClick={() => setText(loaded.content)}>Discard changes</Button>}
         <span className="text-xs text-stone-500">
-          {file.format === 'json' ? 'Tree or text view (top-left of the editor); Format and Compact in its menu' : `${FORMAT_LABELS[file.format]}${file.format === 'php' ? ' — checked with php -l before saving (nothing is run)' : ' — checked before saving'}`}
+          {file.format === 'json' ? 'JSON — checked as you type; Format and Compact in the editor’s menu' : `${FORMAT_LABELS[file.format]}${file.format === 'php' ? ' — checked with php -l before saving (nothing is run)' : ' — checked before saving'}`}
         </span>
       </div>
       {save.error && (

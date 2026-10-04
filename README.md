@@ -45,9 +45,9 @@ What it's for:
 - **Edit config files.** Sites without a `.env` (Charcoal's
   `config/config.local.json`) or with files in `persistent_files`, like a
   WordPress `wp-config.php`, get a Config files section on the
-  Environment tab. JSON files open in a tree view (edit values, add or remove
-  keys without worrying about commas) or a colored text view, using
-  vanilla-jsoneditor. Other files open in a syntax-colored code editor
+  Environment tab. JSON files open in a colored text editor with folding, inline
+  errors, Format/Compact and auto-repair (vanilla-jsoneditor, text mode
+  only, so what's saved is exactly what was typed). Other files open in a syntax-colored code editor
   (CodeMirror). Both load only when a file is opened. JSON is checked as
   you type, and YAML, PHP (`php -l`) and env when you save. Opening a file
   is recorded, since it can hold the database password. A save is refused

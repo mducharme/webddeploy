@@ -1,17 +1,25 @@
-// JSON files: a tree view (edit values, add, remove and move keys without
-// thinking about commas) and a colored text view, from vanilla-jsoneditor.
-// Loaded only when a JSON file is opened (React.lazy).
+// JSON files: vanilla-jsoneditor's text view — syntax colors, folding,
+// inline errors, Format / Compact / Repair, search. Text only (no tree or
+// table view): what's saved is exactly what was typed. Loaded only when a
+// JSON file is opened (React.lazy).
 import 'vanilla-jsoneditor/themes/jse-theme-dark.css';
-import { createJSONEditor, type Content, type JsonEditor as Editor } from 'vanilla-jsoneditor';
+import { createJSONEditor, type Content, type JsonEditor as Editor, type MenuItem } from 'vanilla-jsoneditor';
 import { useEffect, useRef } from 'react';
 
-/** The editor's content as text, indented like the file it came from. */
-export function contentToText(content: Content, indent: number): string {
+/** The editor's content as text (in text mode it always is; json only if a mode switch slipped through). */
+export function contentToText(content: Content): string {
   if ('text' in content && typeof content.text === 'string') return content.text;
-  return `${JSON.stringify((content as { json: unknown }).json, null, indent)}\n`;
+  return `${JSON.stringify((content as { json: unknown }).json, null, 2)}\n`;
 }
 
-export default function JsonEditor({ value, onChange, indent }: { value: string; onChange: (text: string) => void; indent: number }) {
+/** The menu without the text / tree / table switch (and the separator it leaves). */
+export function withoutModeSwitch(items: MenuItem[]): MenuItem[] {
+  const kept = items.filter((i) => !('className' in i && typeof i.className === 'string' && i.className.includes('jse-group-button')));
+  while (kept[0]?.type === 'separator') kept.shift();
+  return kept;
+}
+
+export default function JsonEditor({ value, onChange }: { value: string; onChange: (text: string) => void }) {
   const host = useRef<HTMLDivElement>(null);
   const editor = useRef<Editor | null>(null);
   // What the editor last told us: an outside change (Discard, Reload) is anything else.
@@ -24,11 +32,11 @@ export default function JsonEditor({ value, onChange, indent }: { value: string;
       target: host.current!,
       props: {
         content: { text: value },
-        mode: 'tree' as never,
+        mode: 'text' as never,
         mainMenuBar: true,
-        navigationBar: true,
+        onRenderMenu: withoutModeSwitch,
         onChange: (content: Content) => {
-          const text = contentToText(content, indent);
+          const text = contentToText(content);
           emitted.current = text;
           latest.current(text);
         },

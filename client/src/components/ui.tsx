@@ -185,7 +185,16 @@ export function PhaseBadge({ phase }: { phase: RunPhase }) {
   return <Badge tone={phase}>{label[phase]}</Badge>;
 }
 
-export function Spinner({ label = 'Loading…' }: { label?: string }) {
+export function Spinner({ label = 'Loading…', size = 'sm' }: { label?: string; size?: 'sm' | 'lg' }) {
+  if (size === 'lg') {
+    // Where the page's main content is about to appear: big, centered, unmistakable.
+    return (
+      <div className="flex flex-col items-center justify-center gap-3 px-4 py-16 text-stone-500" role="status">
+        <Loader2 className="size-10 animate-spin text-teal-700 dark:text-teal-400" aria-hidden />
+        <span className="text-base font-medium">{label}</span>
+      </div>
+    );
+  }
   return (
     <div className="flex items-center gap-2 p-4 text-sm text-stone-500" role="status">
       <Loader2 className="size-4 animate-spin" aria-hidden />

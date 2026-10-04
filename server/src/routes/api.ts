@@ -186,6 +186,13 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
     return c.json(await s.cache.get('info', 5 * 60_000, () => s.client.info(), { fresh: !!c.req.query('fresh') }));
   });
 
+  // Names only (no config parsing): the list and the site switcher show these at once.
+  srv.get('/site-names', async (c) => {
+    const s = c.get('server');
+    // "sites:…": cleared with the sites list (cache.invalidate('sites')), so a new site shows up at once.
+    return c.json(await s.cache.get('sites:names', 10_000, () => s.client.siteNames(), { fresh: !!c.req.query('fresh') }));
+  });
+
   srv.get('/sites', async (c) => {
     const s = c.get('server');
     return c.json(await s.cache.get('sites', config.sitesCacheMs, () => s.client.sites(), { fresh: !!c.req.query('fresh') }));

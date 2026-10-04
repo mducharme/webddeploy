@@ -88,3 +88,13 @@ describe('log streams', () => {
     expect(text).toContain("couldn't read");
   });
 });
+
+describe('site names', () => {
+  it('answers from ddeploy site-names, for viewers too', async () => {
+    const { req, connector } = makeApp({ as: VIEWER });
+    const res = await req('/api/servers/local/site-names');
+    expect(res.status).toBe(200);
+    expect((await json(res)).sites[0].name).toBe('testsite');
+    expect(connector.calls).toContainEqual(['site-names']);
+  });
+});

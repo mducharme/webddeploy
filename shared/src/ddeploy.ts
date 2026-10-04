@@ -93,6 +93,13 @@ export const siteSummary = z.object({
 });
 export type SiteSummary = z.infer<typeof siteSummary>;
 
+/** `api site-names`: just the names, instantly — the list shows these while `sites` loads. */
+export const siteNamesResponse = z.object({
+  api_version: z.number(),
+  sites: z.array(z.object({ name: z.string(), preview: z.object({ project: z.string() }).nullable() })),
+});
+export type SiteNamesResponse = z.infer<typeof siteNamesResponse>;
+
 export const sitesResponse = z.object({
   ...versioned,
   base_domain: z.string(),

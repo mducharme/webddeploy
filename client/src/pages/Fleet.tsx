@@ -1,11 +1,11 @@
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
-import { countStatuses, type CheckStatus, type SiteSummary } from '@webddeploy/shared';
-import { ExternalLink, RefreshCw, Rocket, Search } from 'lucide-react';
+import { countStatuses, type CheckStatus, type SiteNamesResponse, type SiteSummary } from '@webddeploy/shared';
+import { ExternalLink, Loader2, RefreshCw, Rocket, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Commit, Trigger } from '../components/RunTable.tsx';
 import { Badge, Card, ConfirmButton, Empty, ErrorBox, PhaseBadge, Spinner, StatusDot, Td, Th, cx, inputClass, InlineError } from '../components/ui.tsx';
 import { dateTime, kindLabel, relativeTime, shortSha } from '../lib/format.ts';
-import { useDeploy, useDoctor, useInfo, useRecentRuns, useRefreshFleet, useSites } from '../lib/api.ts';
+import { useDeploy, useDoctor, useInfo, useRecentRuns, useRefreshFleet, useSiteNames, useSites } from '../lib/api.ts';
 import { RunTable } from '../components/RunTable.tsx';
 import { useCan } from '../lib/role.tsx';
 import { useSearchState } from '../lib/searchState.ts';
@@ -29,6 +29,8 @@ export function Fleet() {
   const sites = useSites(server);
   const doctor = useDoctor(server);
   const refresh = useRefreshFleet(server);
+  // Names come back at once; the full list (deploys, runs) a moment later.
+  const names = useSiteNames(server);
   const [query, setQuery] = useSearchState<string>('q', '');
   const [showPreviews, setShowPreviews] = useSearchState<boolean>('previews', false);
   const [view, setView] = useSearchState<FleetView>('view', 'all');
@@ -104,8 +106,10 @@ export function Fleet() {
           </div>
         }
       >
-        {sites.isPending ? (
-          <Spinner label="Reading sites from ddeploy…" />
+        {sites.isPending && names.data ? (
+          <PendingSites server={server} names={names.data.sites} query={query} showPreviews={showPreviews} />
+        ) : sites.isPending ? (
+          <Spinner size="lg" label="Loading sites…" />
         ) : sites.error ? (
           <ErrorBox error={sites.error} title="Couldn't list sites" />
         ) : rows.length === 0 ? (
@@ -141,6 +145,32 @@ export function Fleet() {
         )}
       </Card>
       <RecentRuns server={server} />
+    </div>
+  );
+}
+
+/** The site names, already clickable, while their details load. */
+function PendingSites({ server, names, query, showPreviews }: { server: string; names: SiteNamesResponse['sites']; query: string; showPreviews: boolean }) {
+  const q = query.trim().toLowerCase();
+  const shown = names.filter((n) => (showPreviews || !n.preview) && (!q || n.name.toLowerCase().includes(q)));
+  const bar = (w: string) => <span className={cx('inline-block h-3 animate-pulse rounded bg-stone-200 dark:bg-stone-800', w)} />;
+  return (
+    <div data-testid="pending-sites">
+      <p className="flex items-center gap-2 border-b border-stone-100 px-4 py-2 text-xs text-stone-500 dark:border-stone-800">
+        <Loader2 className="size-3.5 animate-spin" aria-hidden /> Loading deploys and runs…
+      </p>
+      <ul className="divide-y divide-stone-100 dark:divide-stone-800">
+        {shown.map((n) => (
+          <li key={n.name} className={cx('flex items-center gap-4 px-4 py-3', n.preview && 'pl-9')}>
+            <StatusDot status="pending" label="checking…" />
+            <Link to="/s/$server/sites/$name" params={{ server, name: n.name }} className="w-48 shrink-0 truncate font-medium hover:underline">
+              {n.name}
+            </Link>
+            {n.preview && <Badge tone="neutral">preview of {n.preview.project}</Badge>}
+            <span className="hidden flex-1 items-center gap-6 md:flex">{bar('w-56')}{bar('w-28')}{bar('w-24')}</span>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

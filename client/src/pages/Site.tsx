@@ -15,6 +15,7 @@ import { SettingsTab } from './SettingsTab.tsx';
 import { DeployNowButton } from './siteShared.tsx';
 import { useCan } from '../lib/role.tsx';
 import { RefreshBar } from '../components/RefreshBar.tsx';
+import { SiteSwitcher } from '../components/SiteSwitcher.tsx';
 import { useSearchState } from '../lib/searchState.ts';
 import { PreviewActions, PreviewsTab } from './PreviewsTab.tsx';
 import { Badge, Button, Card, Empty, ErrorBox, Mono, Spinner, StatusDot, Tabs } from '../components/ui.tsx';
@@ -33,7 +34,18 @@ export function SitePage() {
   const refresh = useRefreshSite(server, name);
   const isAdmin = useCan('admin');
 
-  if (site.isPending) return <Spinner label={`Reading ${name}…`} />;
+  if (site.isPending) {
+    // The name and the switcher at once: going to another site doesn't wait for this one.
+    return (
+      <div className="space-y-4">
+        <h1 className="flex items-center gap-2 text-xl font-semibold">
+          {name}
+          <SiteSwitcher server={server} current={name} />
+        </h1>
+        <Spinner size="lg" label={`Loading ${name}…`} />
+      </div>
+    );
+  }
   if (site.error) return <ErrorBox error={site.error} title={`Couldn't load ${name}`} />;
   const d = site.data;
   const s = d.site;
@@ -48,6 +60,7 @@ export function SitePage() {
         <div className="min-w-0">
           <h1 className="flex items-center gap-2 text-xl font-semibold">
             {s.name}
+            <SiteSwitcher server={server} current={s.name} />
             {s.preview && <Badge tone="neutral">preview of {s.preview.project} · {s.preview.mode}</Badge>}
           </h1>
           <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm text-stone-600 dark:text-stone-400">

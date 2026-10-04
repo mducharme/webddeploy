@@ -30,6 +30,7 @@ export function applyLive(qc: QueryClient, server: string, m: LiveMessage, curre
   if (m.changed_sites.length || m.finished.length) {
     void qc.invalidateQueries({ queryKey: keys.runs(server) });
     void qc.invalidateQueries({ queryKey: keys.sites(server) });
+    void qc.invalidateQueries({ queryKey: ['siteNames', server] });
     const sites = new Set([...m.changed_sites, ...m.finished.map((r) => r.site)]);
     void qc.invalidateQueries({ predicate: (q) => q.queryKey[1] === server && q.queryKey.some((k) => typeof k === 'string' && sites.has(k)) });
   }

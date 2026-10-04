@@ -22,6 +22,7 @@ import {
   siteDetailResponse,
   sitesResponse,
   uploadsResponse,
+  siteNamesResponse,
   configFilesResponse,
   configFileResponse,
   configFileWriteResponse,
@@ -83,6 +84,10 @@ export class DdeployClient {
 
   info() {
     return this.call(infoResponse, ['info']);
+  }
+
+  siteNames() {
+    return this.call(siteNamesResponse, ['site-names']);
   }
 
   sites() {

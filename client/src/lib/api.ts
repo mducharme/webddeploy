@@ -5,6 +5,7 @@ import type {
   DbInfoResponse,
   UploadsResponse,
   BackupsResponse,
+  SiteNamesResponse,
   ConfigFileResponse,
   ConfigFilesResponse,
   FetchKeyResponse,
@@ -97,6 +98,10 @@ export const useMe = () =>
 
 export const useInfo = (server: string) =>
   useQuery({ queryKey: keys.info(server), queryFn: () => api<InfoResponse>(`${base(server)}/info`), staleTime: 5 * 60_000 });
+
+/** Names only: instant, so lists and the site switcher don't wait for the full `sites`. */
+export const useSiteNames = (server: string) =>
+  useQuery({ queryKey: ['siteNames', server], queryFn: () => api<SiteNamesResponse>(`${base(server)}/site-names`), staleTime: 30_000 });
 
 export const useSites = (server: string) =>
   useQuery({ queryKey: keys.sites(server), queryFn: () => api<SitesResponse>(`${base(server)}/sites`), refetchInterval: 30_000 });
