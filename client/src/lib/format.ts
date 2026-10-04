@@ -73,6 +73,7 @@ export const KIND_LABELS: Record<string, string> = {
   'remove-preview': 'Preview removed',
   'env-change': 'Environment changed',
   'settings-change': 'Settings changed',
+  'file-change': 'Config file changed',
   'db-import': 'Database imported',
   'db-restore': 'Database restored',
   'db-snapshot': 'Database snapshot',

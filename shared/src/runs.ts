@@ -31,7 +31,7 @@ export interface Run {
 export const STALE_RUN_MS = 3 * 3600_000;
 
 /** Config changes and other one-shot events: no run log, no duration. */
-export const CHANGE_KINDS: ReadonlySet<string> = new Set(['env-change', 'settings-change']);
+export const CHANGE_KINDS: ReadonlySet<string> = new Set(['env-change', 'settings-change', 'file-change']);
 
 export const TERMINAL_PHASES: ReadonlySet<RunPhase> = new Set(['succeeded', 'failed', 'skipped', 'unknown']);
 

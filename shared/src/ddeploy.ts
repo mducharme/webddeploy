@@ -259,6 +259,39 @@ export const runShowResponse = z.object({
 });
 export type RunShowResponse = z.infer<typeof runShowResponse>;
 
+/** `api files <name>`: persistent config files the editor can open (not .env). */
+export const configFilesResponse = z.object({
+  api_version: z.number(),
+  site: z.string(),
+  target: z.string(),
+  /** The DB credential file's path for this site's scheme (".env", "config/config.local.json", or ""). */
+  credential: z.string(),
+  files: z.array(
+    z.object({
+      path: z.string(),
+      format: z.enum(['json', 'yaml', 'php', 'env', 'ini', 'text']),
+      exists: z.boolean(),
+      size: z.number().nullable(),
+      credential: z.boolean(),
+    }),
+  ),
+});
+export type ConfigFilesResponse = z.infer<typeof configFilesResponse>;
+
+export const configFileResponse = z.object({
+  api_version: z.number(),
+  path: z.string(),
+  format: z.enum(['json', 'yaml', 'php', 'env', 'ini', 'text']),
+  exists: z.boolean(),
+  size: z.number(),
+  sha256: z.string(),
+  content: z.string(),
+  versions: z.array(z.object({ id: z.string(), size: z.number(), by: z.string() })),
+});
+export type ConfigFileResponse = z.infer<typeof configFileResponse>;
+
+export const configFileWriteResponse = z.object({ api_version: z.number(), path: z.string(), changed: z.boolean(), sha256: z.string() });
+
 export const envEntry = z.object({ key: z.string(), value: z.string(), managed: z.boolean() });
 export type EnvEntry = z.infer<typeof envEntry>;
 
@@ -428,6 +461,9 @@ export const patterns = {
   uploadsVersion: /^[0-9]{8}T[0-9]{6}Z$/,
   sha: /^[0-9a-f]{7,40}$/,
   envKey: /^[A-Za-z_][A-Za-z0-9_]*$/,
+  /** A persistent file's repo-relative path (lib/config.sh validate_relative_path). */
+  configFile: /^(?!\/)(?!.*(^|\/)\.\.(\/|$))[A-Za-z0-9._/@+-]{1,300}$/,
+  fileVersion: /^[0-9]{8}T[0-9]{6}Z$/,
   /** lib/cmd_fetch.sh FETCH_USER_RE / FETCH_PATH_RE. */
   sshUser: /^[a-z_][a-z0-9_.-]{0,31}$/,
   sshPath: /^[A-Za-z0-9._/@+~-]*$/,

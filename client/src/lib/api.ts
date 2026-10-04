@@ -5,6 +5,8 @@ import type {
   DbInfoResponse,
   UploadsResponse,
   BackupsResponse,
+  ConfigFileResponse,
+  ConfigFilesResponse,
   FetchKeyResponse,
   FetchSource,
   FetchTestResponse,
@@ -83,6 +85,7 @@ export const keys = {
   backups: (s: string, n: string) => ['backups', s, n] as const,
   users: ['users'] as const,
   fetchKey: (s: string) => ['fetch-key', s] as const,
+  configFiles: (s: string, n: string) => ['configFiles', s, n] as const,
   options: ['options'] as const,
   config: (s: string) => ['config', s] as const,
   branches: (s: string, n: string) => ['branches', s, n] as const,
@@ -207,6 +210,35 @@ export interface MaskedEnv {
   path: string;
   entries: MaskedEnvEntry[];
   unparsed_lines: number;
+}
+
+export const useConfigFiles = (server: string, name: string) =>
+  useQuery({ queryKey: keys.configFiles(server, name), queryFn: () => api<ConfigFilesResponse>(`${base(server)}/sites/${name}/files`) });
+
+/** Opens one file (recorded in the activity log: its content may hold credentials). */
+export const useOpenConfigFile = (server: string, name: string) =>
+  useMutation({
+    mutationFn: (path: string) => api<ConfigFileResponse>(`${base(server)}/sites/${name}/files/read`, { method: 'POST', body: JSON.stringify({ path }) }),
+  });
+
+export function useSaveConfigFile(server: string, name: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { success: (_: unknown, v: unknown) => `Saved ${(v as { path: string }).path} — the site reads it on its next request` },
+    mutationFn: (body: { path: string; content: string; expect_sha?: string }) =>
+      api<{ changed: boolean; sha256: string }>(`${base(server)}/sites/${name}/files`, { method: 'PUT', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.configFiles(server, name) }),
+  });
+}
+
+export function useRestoreConfigFile(server: string, name: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { success: (_: unknown, v: unknown) => `Restored ${(v as { path: string }).path}` },
+    mutationFn: (body: { path: string; version: string }) =>
+      api<{ changed: boolean; sha256: string }>(`${base(server)}/sites/${name}/files/restore`, { method: 'POST', body: JSON.stringify(body) }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.configFiles(server, name) }),
+  });
 }
 
 export const useEnv = (server: string, name: string) =>

@@ -42,6 +42,9 @@ const ACTION_LABELS: Record<string, string> = {
   'user.set': 'set the role of',
   'user.remove': 'removed the access of',
   'options.set': 'changed global options',
+  'file.read': 'opened a config file of',
+  'file.edit': 'edited a config file of',
+  'file.restore': 'restored a config file of',
 };
 
 /** A short summary of an audit entry's detail (never values: the server only records key names). */
@@ -63,6 +66,7 @@ function describe(action: string, detail: unknown): string {
   if (typeof d.branch === 'string' && action.startsWith('preview.')) parts.push(d.branch);
   if (typeof d.sha === 'string') parts.push(d.sha.slice(0, 7));
   if (typeof d.role === 'string') parts.push(d.role);
+  if (typeof d.path === 'string') parts.push(d.path);
   if (typeof d.host === 'string') parts.push(`${d.host}${typeof d.port === 'number' && d.port !== 22 ? `:${d.port}` : ''}`);
   if (typeof d.fingerprint === 'string') parts.push(d.fingerprint);
   if (action === 'config.set') parts.push(Object.entries(d).map(([k, v]) => `${k}=${String(v)}`).join(', '));

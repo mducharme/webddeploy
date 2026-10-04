@@ -2,11 +2,35 @@ import { SECRET_KEY, needsQuotes } from '@webddeploy/shared';
 import { Eye, EyeOff, Plus, Trash2, Undo2 } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { Badge, Button, Card, ErrorBox, Mono, Spinner, cx, inputClass, InlineError } from '../components/ui.tsx';
-import { revealEnv, useApplyEnv, useEnv } from '../lib/api.ts';
+import { ApiError, revealEnv, useApplyEnv, useEnv } from '../lib/api.ts';
+import { ConfigFiles } from './ConfigFiles.tsx';
 import { applyPasted, diff, parsePasted, rowError, rowsFrom, type EnvRow } from '../lib/envEdit.ts';
 import { DeployNowButton } from './siteShared.tsx';
 
+/**
+ * How the site is configured: its .env, key by key, and its other config
+ * files (charcoal's config.local.json, persistent_files) as text. A site
+ * without a .env (charcoal, plain WordPress) only has the second.
+ */
 export function EnvTab({ server, name, isPreview }: { server: string; name: string; isPreview: boolean }) {
+  const env = useEnv(server, name);
+  const noEnv = env.error instanceof ApiError && /no persistent \.env/.test(env.error.message);
+  return (
+    <div className="space-y-4">
+      {noEnv ? (
+        <Card className="p-4 text-sm text-stone-600 dark:text-stone-400">
+          This site has no <Mono>.env</Mono>: it keeps its settings in the files below (or, for plain WordPress, in its own <Mono>wp-config.php</Mono> —
+          add it to <Mono>persistent_files</Mono> to edit it here).
+        </Card>
+      ) : (
+        <EnvEditor server={server} name={name} isPreview={isPreview} />
+      )}
+      <ConfigFiles server={server} name={name} />
+    </div>
+  );
+}
+
+function EnvEditor({ server, name, isPreview }: { server: string; name: string; isPreview: boolean }) {
   const env = useEnv(server, name);
   const apply = useApplyEnv(server, name);
   const [rows, setRows] = useState<EnvRow[]>([]);

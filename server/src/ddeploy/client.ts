@@ -22,6 +22,9 @@ import {
   siteDetailResponse,
   sitesResponse,
   uploadsResponse,
+  configFilesResponse,
+  configFileResponse,
+  configFileWriteResponse,
   fetchKeyResponse,
   fetchTestResponse,
   sourceSpec,
@@ -154,6 +157,23 @@ export class DdeployClient {
 
   cancelRun(id: string, actor: string) {
     return this.call(runCancelResponse, ['run', 'cancel', id, '--actor', actor]);
+  }
+
+  configFiles(site: string) {
+    return this.call(configFilesResponse, ['files', site]);
+  }
+
+  configFile(site: string, path: string) {
+    return this.call(configFileResponse, ['files', site, '--read', path]);
+  }
+
+  /** Content on stdin; ddeploy checks it (JSON, YAML, php -l), keeps the previous version, refuses if it changed since expectSha. */
+  writeConfigFile(site: string, actor: string, path: string, content: string, expectSha?: string) {
+    return this.call(configFileWriteResponse, ['files', site, '--write', path, ...(expectSha ? ['--expect-sha', expectSha] : []), '--actor', actor], { stdin: content });
+  }
+
+  restoreConfigFile(site: string, actor: string, path: string, version: string) {
+    return this.call(configFileWriteResponse, ['files', site, '--restore', path, '--version', version, '--actor', actor]);
   }
 
   env(site: string) {

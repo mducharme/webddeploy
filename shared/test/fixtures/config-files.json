@@ -1,0 +1,22 @@
+{
+    "api_version": 1,
+    "site": "testsite",
+    "target": "testsite",
+    "credential": ".env",
+    "files": [
+        {
+            "path": "config/app.json",
+            "format": "json",
+            "exists": true,
+            "size": 58,
+            "credential": false
+        },
+        {
+            "path": "wp-config.php",
+            "format": "php",
+            "exists": true,
+            "size": 33,
+            "credential": false
+        }
+    ]
+}

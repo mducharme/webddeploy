@@ -42,6 +42,14 @@ What it's for:
   the old host over SSH. The card shows the read-only `authorized_keys`
   line to add there, asks you to confirm the host's fingerprint the first
   time, dry-runs the copy (file count and size), then copies it as a run.
+- **Edit config files.** Sites without a `.env` (Charcoal's
+  `config/config.local.json`) or with files in `persistent_files`, like a
+  WordPress `wp-config.php`, get a Config files section on the
+  Environment tab. It's a text editor that checks JSON as you type (with
+  Format), and YAML, PHP (`php -l`) and env when you save. Opening a file
+  is recorded, since it can hold the database password. A save is refused
+  if someone else changed the file meanwhile, and previous versions can
+  be restored.
 - **Manage backups.** Each site has a Backups tab: last backups and
   schedules, database dumps (download, restore, keep forever, delete),
   restoring a file folder from the backup, and versions that bring back

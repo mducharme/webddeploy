@@ -493,6 +493,47 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
   // Secret-looking values never leave the server unless asked for one at
   // a time (audited); the rest are shown as they are.
 
+  // --- config files (charcoal's config.local.json, persistent_files) -------
+
+  const filePath = z.string().regex(patterns.configFile, 'a config file path');
+
+  srv.get('/sites/:name/files', async (c) => c.json(await c.get('server').client.configFiles(siteParam(c))));
+
+  // Opening a file shows its content, credentials included: recorded, like revealing a secret.
+  srv.post('/sites/:name/files/read', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const parsed = z.object({ path: filePath }).safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return issues(c, parsed.error);
+    return audited(c.get('user').email, s.ref.id, 'file.read', name, { path: parsed.data.path }, async () => ({
+      body: await s.client.configFile(name, parsed.data.path),
+    }), c);
+  });
+
+  srv.put('/sites/:name/files', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const parsed = z
+      .object({ path: filePath, content: z.string().max(262_144), expect_sha: z.string().regex(/^[0-9a-f]{64}$/).optional() })
+      .safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return issues(c, parsed.error);
+    const { path, content, expect_sha } = parsed.data;
+    // The path only: the content may hold credentials.
+    return audited(c.get('user').email, s.ref.id, 'file.edit', name, { path }, async () => ({
+      body: await s.client.writeConfigFile(name, c.get('user').email, path, content, expect_sha),
+    }), c);
+  });
+
+  srv.post('/sites/:name/files/restore', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const parsed = z.object({ path: filePath, version: z.string().regex(patterns.fileVersion) }).safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return issues(c, parsed.error);
+    return audited(c.get('user').email, s.ref.id, 'file.restore', name, parsed.data, async () => ({
+      body: await s.client.restoreConfigFile(name, c.get('user').email, parsed.data.path, parsed.data.version),
+    }), c);
+  });
+
   srv.get('/sites/:name/env', async (c) => c.json(maskEnv(await c.get('server').client.env(siteParam(c)))));
 
   srv.post('/sites/:name/env/reveal', async (c) => {

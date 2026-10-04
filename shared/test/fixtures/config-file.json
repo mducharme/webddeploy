@@ -1,0 +1,41 @@
+{
+    "api_version": 1,
+    "path": "config/app.json",
+    "format": "json",
+    "exists": true,
+    "size": 58,
+    "sha256": "11305afa8e20c56250f2034a7e1f1b9d6e0d83f704a672f489c545c229ff9ec6",
+    "content": "{\n  \"name\": \"testsite\",\n  \"cache\": { \"enabled\": false }\n}\n",
+    "versions": [
+        {
+            "id": "20261004T040106Z",
+            "size": 57,
+            "by": "admin@example.com"
+        },
+        {
+            "id": "20261004T040001Z",
+            "size": 13,
+            "by": "admin@example.com"
+        },
+        {
+            "id": "20261004T040000Z",
+            "size": 13,
+            "by": "admin@example.com"
+        },
+        {
+            "id": "20261004T035816Z",
+            "size": 13,
+            "by": "a@b.c"
+        },
+        {
+            "id": "20261004T035815Z",
+            "size": 13,
+            "by": "a@b.c"
+        },
+        {
+            "id": "20261004T035706Z",
+            "size": 13,
+            "by": "a@b.c"
+        }
+    ]
+}
