@@ -167,7 +167,7 @@ export function runFromShow(show: RunShowResponse, now: Date = new Date()): Run 
   return base;
 }
 
-export type Actor = { type: 'web' | 'manual' | 'webhook' | 'unknown'; label: string };
+export type Actor = { type: 'web' | 'manual' | 'webhook' | 'schedule' | 'unknown'; label: string };
 
 /**
  * Who started a run, from ddeploy's trigger string: "web (a@b.c)",
@@ -178,6 +178,8 @@ export type Actor = { type: 'web' | 'manual' | 'webhook' | 'unknown'; label: str
 export function parseTrigger(trigger: string, author?: string | null): Actor {
   let m = /^web \((.+)\)$/.exec(trigger);
   if (m) return { type: 'web', label: m[1]! };
+  // ddeploy's cron jobs (backups, preview cleanup) run with DDEPLOY_TRIGGER=schedule.
+  if (trigger === 'schedule') return { type: 'schedule', label: 'schedule' };
   m = /^manual(?: \((.+)\))?$/.exec(trigger);
   if (m) return { type: 'manual', label: m[1] ?? 'root' };
   m = /^webhook(?: \[[^\]]*\])?(?: by (.+))?$/.exec(trigger);

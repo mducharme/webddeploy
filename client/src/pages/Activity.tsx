@@ -1,6 +1,10 @@
 import { Link } from '@tanstack/react-router';
-import { Badge, Card, Empty, ErrorBox, Mono, Spinner, Td, Th } from '../components/ui.tsx';
-import { useActivity } from '../lib/api.ts';
+import { parseTrigger, type Actor } from '@webddeploy/shared';
+import { useMemo, useState } from 'react';
+import { RunTable } from '../components/RunTable.tsx';
+import { Badge, Card, Empty, ErrorBox, Mono, Spinner, Tabs, Td, Th, inputClass } from '../components/ui.tsx';
+import { useActivity, useMe, useRecentRuns } from '../lib/api.ts';
+import { useCan } from '../lib/role.tsx';
 import { relativeTime } from '../lib/format.ts';
 
 const ACTION_LABELS: Record<string, string> = {
@@ -31,6 +35,13 @@ const ACTION_LABELS: Record<string, string> = {
   'backup.unkeep': 'stopped keeping a backup of',
   'backup.delete': 'deleted a backup of',
   'backup.download': 'downloaded a backup of',
+  'uploads.fetch': 'copied files from another server into',
+  'fetch.accept-host': 'confirmed the host key of a server, for',
+  'fetch.forget-host': 'forgot a host key',
+  'config.set': 'changed server settings',
+  'user.set': 'set the role of',
+  'user.remove': 'removed the access of',
+  'options.set': 'changed global options',
 };
 
 /** A short summary of an audit entry's detail (never values: the server only records key names). */
@@ -51,13 +62,83 @@ function describe(action: string, detail: unknown): string {
   if (typeof d.source === 'string') parts.push(d.source);
   if (typeof d.branch === 'string' && action.startsWith('preview.')) parts.push(d.branch);
   if (typeof d.sha === 'string') parts.push(d.sha.slice(0, 7));
+  if (typeof d.role === 'string') parts.push(d.role);
+  if (typeof d.host === 'string') parts.push(`${d.host}${typeof d.port === 'number' && d.port !== 22 ? `:${d.port}` : ''}`);
+  if (typeof d.fingerprint === 'string') parts.push(d.fingerprint);
+  if (action === 'config.set') parts.push(Object.entries(d).map(([k, v]) => `${k}=${String(v)}`).join(', '));
   return parts.join(' · ');
 }
 
+const TABS = [
+  { id: 'all', label: 'Everything' },
+  { id: 'web', label: 'Web actions (audit log)' },
+] as const;
+type ActivityTab = (typeof TABS)[number]['id'];
+
+/** The form input style, at its natural width (inputClass is full width). */
+const filterClass = `${inputClass.replace(/\bw-full\b/, '')} w-44 py-1`;
+
+const SOURCES: Record<Actor['type'], string> = { web: 'Web UI', webhook: 'Git push', schedule: 'Schedule (cron)', manual: 'CLI', unknown: 'Other' };
+
 export function ActivityPage() {
+  const isAdmin = useCan('admin');
+  const [tab, setTab] = useState<ActivityTab>('all');
+  const tabs = TABS.filter((t) => t.id === 'all' || isAdmin);
+  return (
+    <div className="space-y-4">
+      <div>
+        <h1 className="text-xl font-semibold">Activity</h1>
+        <p className="text-sm text-stone-500">
+          {tab === 'all'
+            ? 'Every run on the server, whatever started it: the web UI, a git push, a schedule (backups, preview cleanup) or the command line.'
+            : 'What people did in the web UI, with who did it — including what never starts a run: settings and environment changes, revealed secrets, downloads, users.'}
+        </p>
+      </div>
+      {tabs.length > 1 && <Tabs tabs={[...tabs]} value={tab} onChange={setTab} />}
+      {tab === 'all' ? <AllRuns /> : <WebActions />}
+    </div>
+  );
+}
+
+function AllRuns() {
+  const server = useMe().data?.servers[0]?.id ?? 'local';
+  const runs = useRecentRuns(server, 300);
+  const [site, setSite] = useState('');
+  const [source, setSource] = useState<'' | Actor['type']>('');
+  const [failedOnly, setFailedOnly] = useState(false);
+  const all = runs.data?.runs ?? [];
+  const sites = useMemo(() => [...new Set(all.map((r) => r.site))].sort(), [all]);
+  const shown = all.filter(
+    (r) => (!site || r.site === site) && (!source || parseTrigger(r.trigger, r.author).type === source) && (!failedOnly || r.phase === 'failed'),
+  );
+  return (
+    <Card
+      title={`Runs${runs.data ? ` (${shown.length}${shown.length !== all.length ? ` of ${all.length}` : ''})` : ''}`}
+      actions={
+        <span className="flex flex-wrap items-center gap-2">
+          <select className={filterClass} value={site} onChange={(e) => setSite(e.target.value)} aria-label="Site">
+            <option value="">All sites</option>
+            {sites.map((s) => <option key={s} value={s}>{s}</option>)}
+          </select>
+          <select className={filterClass} value={source} onChange={(e) => setSource(e.target.value as Actor['type'] | '')} aria-label="Started by">
+            <option value="">Any source</option>
+            {(Object.keys(SOURCES) as Actor['type'][]).filter((k) => k !== 'unknown').map((k) => <option key={k} value={k}>{SOURCES[k]}</option>)}
+          </select>
+          <label className="flex items-center gap-1.5 text-sm font-normal text-stone-600 dark:text-stone-300">
+            <input type="checkbox" checked={failedOnly} onChange={(e) => setFailedOnly(e.target.checked)} /> Failed only
+          </label>
+        </span>
+      }
+    >
+      {runs.isPending ? <Spinner /> : runs.error ? <ErrorBox error={runs.error} /> : <RunTable runs={shown} server={server} showSite empty="Nothing matches." />}
+    </Card>
+  );
+}
+
+function WebActions() {
   const activity = useActivity();
   return (
-    <Card title="Activity — actions taken from the web UI">
+    <Card title="Web actions">
       {activity.isPending ? (
         <Spinner />
       ) : activity.error ? (
@@ -78,7 +159,7 @@ export function ActivityPage() {
                   <Td>
                     {ACTION_LABELS[e.action] ?? e.action} <Mono>{e.target}</Mono>
                     {describe(e.action, e.detail) && <span className="ml-1 text-xs text-stone-500">{describe(e.action, e.detail)}</span>}
-                    <span className="ml-1 text-xs text-stone-400">on {e.server_id}</span>
+                    {e.server_id !== '-' && <span className="ml-1 text-xs text-stone-400">on {e.server_id}</span>}
                   </Td>
                   <Td>
                     {e.outcome === 'ok' && e.run_id ? (

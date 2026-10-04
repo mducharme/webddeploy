@@ -66,7 +66,7 @@ export function FilesTab({ server, name }: { server: string; name: string }) {
                   <Td><Mono>{s.dir}</Mono></Td>
                   <Td><Badge tone="neutral">{{ 'pre-import': 'before an upload', 'pre-restore': 'before a restore', manual: 'manual' }[s.reason] ?? s.reason}</Badge></Td>
                   <Td className="text-right">
-                    {canAct && <ConfirmButton label="Restore" confirmLabel={`Put ${s.dir} back as it was`} onConfirm={() => restore.mutate({ site: name, body: { snapshot: s.id } }, { onSuccess: goRun })} />}
+                    {canAct && <ConfirmButton label="Restore" busyLabel="Restoring…" confirmLabel={`Put ${s.dir} back as it was`} onConfirm={() => restore.mutateAsync({ site: name, body: { snapshot: s.id } }, { onSuccess: goRun })} />}
                   </Td>
                 </tr>
               ))}

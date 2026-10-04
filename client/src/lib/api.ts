@@ -95,6 +95,38 @@ export const useSites = (server: string) =>
 export const useFreshSites = (server: string) =>
   useQuery({ queryKey: [...keys.sites(server), 'fresh'], queryFn: () => api<SitesResponse>(`${base(server)}/sites?fresh=1`), staleTime: 0 });
 
+/** Homepage "Refresh": sites and health straight from ddeploy (the server's cache bypassed), then the activity. */
+export function useRefreshFleet(server: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const [sites, doctor] = await Promise.all([
+        api<SitesResponse>(`${base(server)}/sites?fresh=1`),
+        api<DoctorResponse>(`${base(server)}/doctor?fresh=1`),
+      ]);
+      qc.setQueryData(keys.sites(server), sites);
+      qc.setQueryData(keys.doctor(server), doctor);
+      await qc.invalidateQueries({ queryKey: keys.runs(server) });
+    },
+  });
+}
+
+/** Site page "Refresh": the site and its health fresh, then everything else about it (history, files, backups…). */
+export function useRefreshSite(server: string, name: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async () => {
+      const [site, doctor] = await Promise.all([
+        api<SiteDetailResponse>(`${base(server)}/sites/${name}?fresh=1`),
+        api<DoctorResponse>(`${base(server)}/doctor?site=${name}&fresh=1`),
+      ]);
+      qc.setQueryData(keys.site(server, name), site);
+      qc.setQueryData(keys.doctor(server, name), doctor);
+      await qc.invalidateQueries({ predicate: (q) => q.queryKey[1] === server && q.queryKey.includes(name) && q.queryKey[0] !== 'site' && q.queryKey[0] !== 'doctor' });
+    },
+  });
+}
+
 export const useSite = (server: string, name: string) =>
   useQuery({ queryKey: keys.site(server, name), queryFn: () => api<SiteDetailResponse>(`${base(server)}/sites/${name}`), enabled: !!name });
 
@@ -275,7 +307,8 @@ export function useManageBackup(server: string, name: string) {
   return useMutation({
     mutationFn: ({ action, file }: { action: 'keep' | 'unkeep' | 'delete'; file: string }) =>
       api<{ file: string; action: string }>(`${base(server)}/sites/${name}/backups/${action}`, { method: 'POST', body: JSON.stringify({ file }) }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.backups(server, name) }),
+    // Returned: the mutation (and its button) stays pending until the list no longer shows the old state.
+    onSuccess: () => qc.invalidateQueries({ queryKey: keys.backups(server, name) }),
   });
 }
 

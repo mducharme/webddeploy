@@ -10,6 +10,7 @@ export function Trigger({ trigger, author }: { trigger: string; author?: string 
   if (a.type === 'web') via = 'web';
   else if (a.type === 'manual') via = 'CLI';
   else if (a.type === 'webhook') via = a.label === 'git push' ? null : 'git push';
+  else if (a.type === 'schedule') via = 'cron';
   const who = a.type === 'unknown' && trigger === 'unknown' ? '—' : a.label;
   const title = author && author !== who ? `${trigger} — commit by ${author}` : trigger;
   return (

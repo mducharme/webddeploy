@@ -11,6 +11,7 @@ export function EnvTab({ server, name, isPreview }: { server: string; name: stri
   const apply = useApplyEnv(server, name);
   const [rows, setRows] = useState<EnvRow[]>([]);
   const [revealed, setRevealed] = useState<Record<string, string>>({});
+  const [revealing, setRevealing] = useState<string | null>(null);
   const [paste, setPaste] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
@@ -35,8 +36,13 @@ export function EnvTab({ server, name, isPreview }: { server: string; name: stri
       setRevealed(({ [key]: _, ...rest }) => rest);
       return;
     }
-    const r = await revealEnv(server, name, key);
-    setRevealed((v) => ({ ...v, [key]: r.value }));
+    setRevealing(key);
+    try {
+      const r = await revealEnv(server, name, key);
+      setRevealed((v) => ({ ...v, [key]: r.value }));
+    } finally {
+      setRevealing(null);
+    }
   };
 
   const save = () =>
@@ -127,7 +133,7 @@ export function EnvTab({ server, name, isPreview }: { server: string; name: stri
                 </div>
                 <div className="flex items-start gap-1">
                   {r.masked && !r.deleted && (
-                    <Button variant="ghost" onClick={() => void reveal(r.key)} aria-label={revealed[r.key] !== undefined ? `Hide ${r.key}` : `Reveal ${r.key}`} title="Reveal (recorded in the activity log)">
+                    <Button variant="ghost" busy={revealing === r.key} onClick={() => void reveal(r.key)} aria-label={revealed[r.key] !== undefined ? `Hide ${r.key}` : `Reveal ${r.key}`} title="Reveal (recorded in the activity log)">
                       {revealed[r.key] !== undefined ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
                     </Button>
                   )}

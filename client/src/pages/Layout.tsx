@@ -49,7 +49,7 @@ function Shell({ children }: { children: ReactNode }) {
             <NavLink to="/s/$server/status" params={{ server }} icon={<HeartPulse className="size-4" />}>Status</NavLink>
             <NavLink to="/s/$server/logs" params={{ server }} icon={<FileText className="size-4" />}>Logs</NavLink>
             <NavLink to="/s/$server/backups" params={{ server }} icon={<Archive className="size-4" />}>Backups</NavLink>
-            <Can role="admin"><NavLink to="/activity" icon={<Activity className="size-4" />}>Activity</NavLink></Can>
+            <NavLink to="/activity" icon={<Activity className="size-4" />}>Activity</NavLink>
             <Can role="superadmin"><AdminMenu server={server} /></Can>
           </nav>
           <Can role="admin">

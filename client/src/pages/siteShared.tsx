@@ -17,7 +17,7 @@ export function DeployNowButton({ server, name, label = 'Deploy', confirmLabel }
         confirmLabel={confirmLabel ?? `Deploy ${name}`}
         icon={<Rocket className="size-4" aria-hidden />}
         busy={deploy.isPending}
-        onConfirm={() => deploy.mutate(name, { onSuccess: ({ run_id }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } }) })}
+        onConfirm={() => deploy.mutateAsync(name, { onSuccess: ({ run_id }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } }) })}
       />
       {deploy.error && <span className="mt-1 max-w-xs text-xs text-red-700">{deploy.error.message}</span>}
     </span>
@@ -37,7 +37,7 @@ export function RollbackButton({ server, name, sha, label }: { server: string; n
         icon={<Undo2 className="size-4" aria-hidden />}
         busy={rollback.isPending}
         onConfirm={() =>
-          rollback.mutate({ site: name, body: { sha } }, { onSuccess: ({ run_id }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } }) })
+          rollback.mutateAsync({ site: name, body: { sha } }, { onSuccess: ({ run_id }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } }) })
         }
       />
       {rollback.error && <span className="mt-1 max-w-xs text-xs text-red-700">{rollback.error.message}</span>}

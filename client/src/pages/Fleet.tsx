@@ -5,9 +5,10 @@ import { useMemo, useState } from 'react';
 import { Commit, Trigger } from '../components/RunTable.tsx';
 import { Badge, Card, ConfirmButton, Empty, ErrorBox, PhaseBadge, Spinner, StatusDot, Td, Th, cx, inputClass } from '../components/ui.tsx';
 import { dateTime, kindLabel, relativeTime, shortSha } from '../lib/format.ts';
-import { useDeploy, useDoctor, useInfo, useRecentRuns, useSites } from '../lib/api.ts';
+import { useDeploy, useDoctor, useInfo, useRecentRuns, useRefreshFleet, useSites } from '../lib/api.ts';
 import { RunTable } from '../components/RunTable.tsx';
 import { useCan } from '../lib/role.tsx';
+import { RefreshBar } from '../components/RefreshBar.tsx';
 
 /** The newest run, config changes aside (older ddeploy: the newest event). */
 const lastRun = (s: SiteSummary) => (s.last_run !== undefined ? s.last_run : s.last_event);
@@ -26,6 +27,7 @@ export function Fleet() {
   const { server } = useParams({ from: '/s/$server/' });
   const sites = useSites(server);
   const doctor = useDoctor(server);
+  const refresh = useRefreshFleet(server);
   const [query, setQuery] = useState('');
   const [showPreviews, setShowPreviews] = useState(false);
   const [view, setView] = useState<FleetView>('all');
@@ -65,7 +67,12 @@ export function Fleet() {
     <div className="space-y-6">
       <ServerCard server={server} />
       <Card
-        title={`Sites${sites.data ? ` (${sites.data.sites.filter((s) => !s.preview).length})` : ''}`}
+        title={
+          <span className="flex flex-wrap items-center gap-x-3">
+            {`Sites${sites.data ? ` (${sites.data.sites.filter((s) => !s.preview).length})` : ''}`}
+            <RefreshBar updatedAt={sites.dataUpdatedAt} refreshing={refresh.isPending || (sites.isFetching && !sites.data)} onRefresh={() => refresh.mutate()} className="font-normal" />
+          </span>
+        }
         actions={
           <div className="flex flex-wrap items-center gap-3">
             <div role="group" aria-label="Show" className="flex gap-1">
@@ -192,12 +199,12 @@ function SiteRow({ server, site, previews, nested, status }: { server: string; s
       <Td className="text-right">
         {!site.preview && canDeploy && (
           <ConfirmButton
-            label="Deploy"
+            label="Deploy" busyLabel="Starting…"
             confirmLabel={`Deploy ${site.name}`}
             icon={<Rocket className="size-4" aria-hidden />}
             busy={deploy.isPending}
             onConfirm={() =>
-              deploy.mutate(site.name, { onSuccess: ({ run_id }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } }) })
+              deploy.mutateAsync(site.name, { onSuccess: ({ run_id }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } }) })
             }
           />
         )}
@@ -272,7 +279,19 @@ function ServerCard({ server }: { server: string }) {
 function RecentRuns({ server }: { server: string }) {
   const runs = useRecentRuns(server);
   return (
-    <Card title="Recent activity" actions={runs.isFetching ? <RefreshCw className="size-4 animate-spin text-stone-400" aria-hidden /> : null}>
+    <Card
+      title={
+        <span>
+          Recent activity <span className="ml-1 text-xs font-normal text-stone-500">every run: web UI, git push, schedule, command line</span>
+        </span>
+      }
+      actions={
+        <span className="flex items-center gap-2">
+          {runs.isFetching && <RefreshCw className="size-4 animate-spin text-stone-400" aria-hidden />}
+          <Link to="/activity" className="text-sm text-teal-700 hover:underline dark:text-teal-400">See all</Link>
+        </span>
+      }
+    >
       {runs.isPending ? <Spinner /> : runs.error ? <ErrorBox error={runs.error} /> : <RunTable runs={runs.data.runs} server={server} showSite empty="No runs recorded yet." />}
     </Card>
   );

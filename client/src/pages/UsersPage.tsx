@@ -1,5 +1,5 @@
 import { ROLES, ROLE_LABELS, type Role } from '@webddeploy/shared';
-import { UserPlus } from 'lucide-react';
+import { Loader2, UserPlus } from 'lucide-react';
 import { useState } from 'react';
 import { Badge, Button, Card, ConfirmButton, ErrorBox, Field, Spinner, Td, Th, inputClass } from '../components/ui.tsx';
 import { useMe, useOptions, useRemoveUser, useSetOptions, useSetUser, useUsers } from '../lib/api.ts';
@@ -64,7 +64,13 @@ export function UsersPage() {
                     <Td className="font-medium">{u.email}{u.email === me.email && <span className="ml-2 text-xs text-stone-400">(you)</span>}</Td>
                     <Td>
                       {u.source === 'ui' && u.email !== me.email ? (
-                        <select className={`${inputClass} w-36`} value={u.role} aria-label={`Role of ${u.email}`} onChange={(e) => setUser.mutate({ email: u.email, role: e.target.value as Role })}>
+                        <select
+                          className={`${inputClass} w-36`}
+                          value={setUser.isPending && setUser.variables?.email === u.email ? setUser.variables.role : u.role}
+                          disabled={setUser.isPending && setUser.variables?.email === u.email}
+                          aria-label={`Role of ${u.email}`}
+                          onChange={(e) => setUser.mutate({ email: u.email, role: e.target.value as Role })}
+                        >
                           {ROLES.map((r) => <option key={r} value={r}>{ROLE_LABELS[r]}</option>)}
                         </select>
                       ) : (
@@ -74,7 +80,7 @@ export function UsersPage() {
                     <Td className="text-xs text-stone-500">{u.source === 'config' ? 'server configuration (env file)' : u.added_by}</Td>
                     <Td className="text-xs text-stone-500">{u.last_seen_at ? relativeTime(u.last_seen_at) : 'never'}</Td>
                     <Td className="text-right">
-                      {u.source === 'ui' && u.email !== me.email && <ConfirmButton label="Remove" confirmLabel={`Remove ${u.email}`} onConfirm={() => remove.mutate(u.email)} />}
+                      {u.source === 'ui' && u.email !== me.email && <ConfirmButton label="Remove" busyLabel="Removing…" confirmLabel={`Remove ${u.email}`} onConfirm={() => remove.mutateAsync(u.email)} />}
                     </Td>
                   </tr>
                 ))}
@@ -102,11 +108,13 @@ function DomainOption() {
         <input
           type="checkbox"
           className="mt-1"
-          checked={options.data.domain_default_role === 'viewer'}
+          checked={set.isPending ? set.variables?.domain_default_role === 'viewer' : options.data.domain_default_role === 'viewer'}
+          disabled={set.isPending}
           onChange={(e) => set.mutate({ domain_default_role: e.target.checked ? 'viewer' : 'none' })}
         />
         <span>
           <span className="font-medium">
+            {set.isPending && <Loader2 className="mr-1 inline size-3.5 animate-spin" aria-hidden />}
             Anyone in {options.data.allowed_domains?.length ? options.data.allowed_domains.join(', ') : 'the allowed Google Workspace domain'} can view
           </span>
           {!options.data.allowed_domains?.length && (

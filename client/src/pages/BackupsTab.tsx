@@ -246,8 +246,8 @@ function Dumps({ server, name, b, first }: { server: string; name: string; b: Ba
                         {d.kept ? <PinOff className="size-4" aria-hidden /> : <Pin className="size-4" aria-hidden />}
                         <span className="sr-only">{d.kept ? 'Stop keeping' : 'Keep'} {d.file}</span>
                       </Button>
-                      <ConfirmButton label="Restore" confirmLabel="Replace the database with this" onConfirm={() => restore.mutate({ site: name, body: { file: d.file } }, { onSuccess: go })} />
-                      <ConfirmButton label="Delete" confirmLabel="Delete this dump" icon={<Trash2 className="size-4" aria-hidden />} onConfirm={() => manage.mutate({ action: 'delete', file: d.file })} />
+                      <ConfirmButton label="Restore" busyLabel="Restoring…" confirmLabel="Replace the database with this" onConfirm={() => restore.mutateAsync({ site: name, body: { file: d.file } }, { onSuccess: go })} />
+                      <ConfirmButton label="Delete" busyLabel="Deleting…" confirmLabel="Delete this dump" icon={<Trash2 className="size-4" aria-hidden />} onConfirm={() => manage.mutateAsync({ action: 'delete', file: d.file })} />
                     </span>}
                   </Td>
                 </tr>
@@ -283,9 +283,9 @@ function Files({ server, name, b, first }: { server: string; name: string; b: Ba
               <span className="text-stone-500">— {m.files ? `backup: ${m.files} file(s), ${bytes(m.bytes)}` : 'not backed up yet'}</span>
             </span>
             {canAct && !!m.files && <ConfirmButton
-              label="Restore folder"
+              label="Restore folder" busyLabel="Restoring…"
               confirmLabel={`Replace ${m.dir} with the backup`}
-              onConfirm={() => restore.mutate({ site: name, body: { dir: m.dir } }, { onSuccess: go })}
+              onConfirm={() => restore.mutateAsync({ site: name, body: { dir: m.dir } }, { onSuccess: go })}
             />}
           </div>
         ))}
@@ -314,7 +314,7 @@ function Files({ server, name, b, first }: { server: string; name: string; b: Ba
                 <Td className="text-right">
                   <span className="inline-flex flex-wrap justify-end gap-2">
                     {canAct && v.dirs.map((d) => (
-                      <ConfirmButton key={d} label={d} confirmLabel={`Bring back ${d} files`} onConfirm={() => restore.mutate({ site: name, body: { dir: d, version: v.id } }, { onSuccess: go })} />
+                      <ConfirmButton key={d} label={d} confirmLabel={`Bring back ${d} files`} onConfirm={() => restore.mutateAsync({ site: name, body: { dir: d, version: v.id } }, { onSuccess: go })} />
                     ))}
                   </span>
                 </Td>

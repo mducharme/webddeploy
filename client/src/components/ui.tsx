@@ -1,6 +1,6 @@
 import type { CheckStatus, RunPhase } from '@webddeploy/shared';
 import { Loader2 } from 'lucide-react';
-import { useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ButtonHTMLAttributes, type ReactNode } from 'react';
 
 export function cx(...parts: Array<string | false | null | undefined>): string {
   return parts.filter(Boolean).join(' ');
@@ -45,26 +45,39 @@ export function ConfirmButton({
   onConfirm,
   label,
   confirmLabel,
+  busyLabel,
   busy,
   disabled,
   icon,
 }: {
-  onConfirm: () => void;
+  /** May return a promise: the button then stays busy until it settles (the row gone, the list reloaded). */
+  onConfirm: () => void | Promise<unknown>;
   label: string;
   confirmLabel: string;
+  /** Shown while busy, e.g. "Deleting…". */
+  busyLabel?: string;
   busy?: boolean;
   disabled?: boolean;
   icon?: ReactNode;
 }) {
   const [asking, setAsking] = useState(false);
-  if (asking && !busy) {
+  const [working, setWorking] = useState(false);
+  const mounted = useRef(true);
+  useEffect(() => () => void (mounted.current = false), []);
+  const isBusy = busy || working;
+  if (asking && !isBusy) {
     return (
       <span className="inline-flex items-center gap-1">
         <Button
           variant="primary"
           onClick={() => {
             setAsking(false);
-            onConfirm();
+            const p = onConfirm();
+            if (p && typeof (p as Promise<unknown>).then === 'function') {
+              setWorking(true);
+              // Errors are shown by whoever owns the mutation; this only ends the busy state.
+              (p as Promise<unknown>).catch(() => {}).finally(() => mounted.current && setWorking(false));
+            }
           }}
         >
           {confirmLabel}
@@ -76,9 +89,9 @@ export function ConfirmButton({
     );
   }
   return (
-    <Button onClick={() => setAsking(true)} busy={busy} disabled={disabled}>
-      {icon}
-      {label}
+    <Button onClick={() => setAsking(true)} busy={isBusy} disabled={disabled || isBusy}>
+      {!isBusy && icon}
+      {isBusy && busyLabel ? busyLabel : label}
     </Button>
   );
 }

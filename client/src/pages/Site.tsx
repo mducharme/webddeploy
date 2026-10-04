@@ -14,9 +14,10 @@ import { OverviewTab } from './OverviewTab.tsx';
 import { SettingsTab } from './SettingsTab.tsx';
 import { DeployNowButton } from './siteShared.tsx';
 import { useCan } from '../lib/role.tsx';
+import { RefreshBar } from '../components/RefreshBar.tsx';
 import { PreviewActions, PreviewsTab } from './PreviewsTab.tsx';
 import { Badge, Button, Card, Empty, ErrorBox, Mono, Spinner, StatusDot, Tabs } from '../components/ui.tsx';
-import { logStreamUrl, useDoctor, useLogs, useSite } from '../lib/api.ts';
+import { logStreamUrl, useDoctor, useLogs, useRefreshSite, useSite } from '../lib/api.ts';
 import { relativeTime } from '../lib/format.ts';
 import { useOutputStream } from '../lib/stream.ts';
 
@@ -28,6 +29,7 @@ export function SitePage() {
   const { tab } = useSearch({ from: '/s/$server/sites/$name' });
   const navigate = useNavigate({ from: '/s/$server/sites/$name' });
   const site = useSite(server, name);
+  const refresh = useRefreshSite(server, name);
   const isAdmin = useCan('admin');
 
   if (site.isPending) return <Spinner label={`Reading ${name}…`} />;
@@ -60,8 +62,11 @@ export function SitePage() {
             {s.committed_at && <span className="text-xs text-stone-400">committed {relativeTime(s.committed_at)}</span>}
           </div>
         </div>
-        {!s.preview && <DeployNowButton server={server} name={s.name} confirmLabel={`Deploy ${s.branch ?? 'branch'} to ${s.name}`} />}
-        {s.preview && <PreviewActions server={server} project={s.preview.project} branch={s.preview.branch} mode={s.preview.mode} />}
+        <div className="flex flex-col items-end gap-1">
+          {!s.preview && <DeployNowButton server={server} name={s.name} confirmLabel={`Deploy ${s.branch ?? 'branch'} to ${s.name}`} />}
+          {s.preview && <PreviewActions server={server} project={s.preview.project} branch={s.preview.branch} mode={s.preview.mode} />}
+          <RefreshBar updatedAt={site.dataUpdatedAt} refreshing={refresh.isPending} onRefresh={() => refresh.mutate()} />
+        </div>
       </div>
 
       <Tabs tabs={tabs} value={current} onChange={(t) => void navigate({ search: { tab: t }, replace: true })} />

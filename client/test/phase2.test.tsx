@@ -82,6 +82,25 @@ describe('log highlighting', () => {
     ]);
   });
 
+  it('finds tags after a timestamp (ddeploy, nginx)', () => {
+    expect(segment('2026-10-03T14:06:36Z [warn]  upload failed\n')[0]!.kind).toBe('warn');
+    expect(segment('2026/10/03 15:59:24 [error] 18330#18330: forbidden\n')[0]!.kind).toBe('error');
+    expect(segment('  [FAIL] expected x\n')[0]!.kind).toBe('error');
+    expect(segment('[FAIL] expected x\n')[0]!.kind).toBe('error');
+    expect(segment('[warning] w\n')[0]!.kind).toBe('warn');
+  });
+
+  it('colors only the [info]/[ok] tag', () => {
+    const [info] = segment('2026-10-03T14:06:34Z [info]  started\n');
+    expect(info).toMatchObject({ kind: 'info', tagStart: 21, tagEnd: 27 });
+    expect(info!.text.slice(21, 27)).toBe('[info]');
+    expect(segment('[ok]   vhost enabled\n')[0]).toMatchObject({ kind: 'ok', tagStart: 0, tagEnd: 4 });
+  });
+
+  it('a tag later in the line is just text', () => {
+    expect(segment('echo "[error] not really"\n')[0]!.kind).toBe('text');
+  });
+
   it('offers a jump to the first error', () => {
     render(<LogView text={'ok\n[error] one\n[error] two\n'} />);
     expect(screen.getAllByTestId('log-error')).toHaveLength(2);

@@ -41,3 +41,14 @@ describe('fetch (copy from another server)', () => {
     expect(sourceSpec({ user: 'deploy', host: 'h.example', path: '/var/up' })).toBe('deploy@h.example:/var/up');
   });
 });
+
+import { parseTrigger } from '../src/index.ts';
+
+describe('parseTrigger: scheduled runs', () => {
+  it('ddeploy cron jobs (DDEPLOY_TRIGGER=schedule)', () => {
+    expect(parseTrigger('schedule')).toEqual({ type: 'schedule', label: 'schedule' });
+  });
+  it('a root CLI run is still the CLI', () => {
+    expect(parseTrigger('manual').type).toBe('manual');
+  });
+});

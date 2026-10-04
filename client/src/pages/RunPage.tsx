@@ -83,7 +83,7 @@ export function RunPage() {
         </div>
         <div className="flex flex-wrap items-start gap-2">
           {cancellable && (
-            <ConfirmButton label="Cancel run" confirmLabel="Stop it now" icon={<Square className="size-4" aria-hidden />} busy={cancel.isPending} onConfirm={() => cancel.mutate(id)} />
+            <ConfirmButton label="Cancel run" confirmLabel="Stop it now" icon={<Square className="size-4" aria-hidden />} busy={cancel.isPending} onConfirm={() => cancel.mutateAsync(id)} />
           )}
           {isTerminal(run.phase) && run.phase !== 'succeeded' && run.kind === 'deploy' && <DeployNowButton server={server} name={run.site} label="Retry deploy" />}
           {isTerminal(run.phase) && run.phase === 'succeeded' && codeRun && run.from_sha && run.from_sha !== run.to_sha && run.to_sha === live && (

@@ -4,7 +4,7 @@ import { countStatuses, type DoctorResponse } from '@webddeploy/shared';
 import { RefreshCw } from 'lucide-react';
 import { useState } from 'react';
 import { Checks } from '../components/Checks.tsx';
-import { Button, Card, ErrorBox, Spinner, StatusDot } from '../components/ui.tsx';
+import { Button, Card, ErrorBox, Spinner, StatusDot, cx } from '../components/ui.tsx';
 import { api, keys, useDoctor } from '../lib/api.ts';
 import { relativeTime } from '../lib/format.ts';
 
@@ -46,30 +46,35 @@ export function Status() {
       <Card title={<span className="flex items-center gap-2"><StatusDot status={d.server.worst} /> Server</span>}>
         <Checks checks={d.server.checks} />
       </Card>
-      <Card
-        title={`Sites (${d.sites.length})`}
-        actions={
-          <label className="flex items-center gap-1.5 text-sm text-stone-600 dark:text-stone-300">
-            <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} /> Show healthy sites
-          </label>
-        }
-      >
-        {sites.length === 0 && <p className="p-4 text-sm text-stone-500">Every site is healthy.</p>}
-        <div className="divide-y divide-stone-200 dark:divide-stone-800">
-          {sites.map((s) => (
-            <div key={s.name}>
-              <div className="flex items-center gap-2 bg-stone-50 px-4 py-2 dark:bg-stone-900/60">
+      <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+        <h2 className="font-semibold">Sites ({d.sites.length})</h2>
+        <label className="flex items-center gap-1.5 text-sm text-stone-600 dark:text-stone-300">
+          <input type="checkbox" checked={showAll} onChange={(e) => setShowAll(e.target.checked)} /> Show healthy sites
+        </label>
+      </div>
+      {sites.length === 0 && <Card className="p-4 text-sm text-stone-500">Every site is healthy.</Card>}
+      {sites.map((s) => {
+        const n = (st: string) => s.checks.filter((x) => x.status === st).length;
+        const summary = [n('ok') && `${n('ok')} ok`, n('warn') && `${n('warn')} warn`, n('fail') && `${n('fail')} fail`].filter(Boolean).join(' · ');
+        return (
+          <Card
+            key={s.name}
+            className={cx('border-l-4', s.worst === 'fail' ? 'border-l-red-500' : s.worst === 'warn' ? 'border-l-amber-400' : 'border-l-emerald-500')}
+            title={
+              <span className="flex flex-wrap items-center gap-2">
                 <StatusDot status={s.worst} />
-                <Link to="/s/$server/sites/$name" params={{ server, name: s.name }} search={{ tab: 'health' }} className="font-medium hover:underline">
+                <Link to="/s/$server/sites/$name" params={{ server, name: s.name }} search={{ tab: 'health' }} className="hover:underline">
                   {s.name}
                 </Link>
-                {s.preview && <span className="text-xs text-stone-500">preview of {s.preview.project}</span>}
-              </div>
-              <Checks checks={showAll ? s.checks : s.checks.filter((x) => x.status === 'warn' || x.status === 'fail')} />
-            </div>
-          ))}
-        </div>
-      </Card>
+                {s.preview && <span className="text-xs font-normal text-stone-500">preview of {s.preview.project}</span>}
+                <span className="text-xs font-normal text-stone-500">{summary}</span>
+              </span>
+            }
+          >
+            <Checks checks={showAll ? s.checks : s.checks.filter((x) => x.status === 'warn' || x.status === 'fail')} />
+          </Card>
+        );
+      })}
     </div>
   );
 }

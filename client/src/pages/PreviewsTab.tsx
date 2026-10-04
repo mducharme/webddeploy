@@ -149,13 +149,13 @@ export function PreviewActions({ server, project, branch, mode }: { server: stri
   return (
     <span className="inline-flex flex-col items-end gap-1">
       <span className="inline-flex flex-wrap justify-end gap-2">
-        <ConfirmButton label="Redeploy" confirmLabel={`Redeploy ${branch}`} icon={<RefreshCw className="size-4" aria-hidden />} busy={deploy.isPending} onConfirm={() => deploy.mutate({ project, body: { branch } }, { onSuccess: go })} />
+        <ConfirmButton label="Redeploy" busyLabel="Starting…" confirmLabel={`Redeploy ${branch}`} icon={<RefreshCw className="size-4" aria-hidden />} busy={deploy.isPending} onConfirm={() => deploy.mutateAsync({ project, body: { branch } }, { onSuccess: go })} />
         <ConfirmButton
-          label="Remove"
+          label="Remove" busyLabel="Removing…"
           confirmLabel={mode === 'isolated' ? 'Remove it and its database' : 'Remove preview'}
           icon={<Trash2 className="size-4" aria-hidden />}
           busy={remove.isPending}
-          onConfirm={() => remove.mutate({ project, body: { branch } }, { onSuccess: go })}
+          onConfirm={() => remove.mutateAsync({ project, body: { branch } }, { onSuccess: go })}
         />
       </span>
       {(deploy.error ?? remove.error) && <span className="max-w-xs text-xs text-red-700">{(deploy.error ?? remove.error)!.message}</span>}
