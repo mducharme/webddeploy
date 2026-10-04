@@ -1,7 +1,7 @@
 import type { ConfigFileResponse, ConfigFilesResponse } from '@webddeploy/shared';
-import { FileCog, KeyRound, RotateCcw, Save, WandSparkles } from 'lucide-react';
-import { useEffect, useMemo, useState, type KeyboardEvent } from 'react';
-import { Badge, Button, Card, ConfirmButton, ErrorBox, InlineError, Mono, Spinner, Td, Th, cx } from '../components/ui.tsx';
+import { FileCog, KeyRound, RotateCcw, Save } from 'lucide-react';
+import { Suspense, lazy, useEffect, useMemo, useState } from 'react';
+import { Badge, Button, Card, ConfirmButton, ErrorBox, InlineError, Mono, Spinner, Td, Th } from '../components/ui.tsx';
 import { ApiError, useConfigFiles, useOpenConfigFile, useRestoreConfigFile, useSaveConfigFile } from '../lib/api.ts';
 import { bytes, dateTime } from '../lib/format.ts';
 
@@ -22,9 +22,17 @@ export function localCheck(text: string, format: Format): string | null {
 
 /** Pretty-printed JSON, keeping the file's indentation width (2 spaces when it can't tell). */
 export function formatJson(text: string): string {
-  const indent = /\n( +)"/.exec(text)?.[1]?.length ?? 2;
-  return `${JSON.stringify(JSON.parse(text), null, indent)}\n`;
+  return `${JSON.stringify(JSON.parse(text), null, indentOf(text))}\n`;
 }
+
+/** The file's indentation width, so the tree view writes it back the same way (2 when it can't tell). */
+export function indentOf(text: string): number {
+  return /\n( +)"/.exec(text)?.[1]?.length ?? 2;
+}
+
+// Editors load only when a file is opened: they're the heaviest part of the UI.
+const JsonEditor = lazy(() => import('../components/editors/JsonEditor.tsx'));
+const CodeEditor = lazy(() => import('../components/editors/CodeEditor.tsx'));
 
 /** "20261004T040106Z" → a Date. */
 const versionDate = (id: string) => new Date(`${id.slice(0, 4)}-${id.slice(4, 6)}-${id.slice(6, 8)}T${id.slice(9, 11)}:${id.slice(11, 13)}:${id.slice(13, 15)}Z`);
@@ -106,17 +114,6 @@ function FileEditor({ server, name, file, target }: { server: string; name: stri
     );
   }
 
-  const onKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
-    // Tab indents (2 spaces) instead of leaving the editor.
-    if (e.key !== 'Tab' || e.shiftKey) return;
-    e.preventDefault();
-    const el = e.currentTarget;
-    const { selectionStart: a, selectionEnd: b } = el;
-    const next = `${text.slice(0, a)}  ${text.slice(b)}`;
-    setText(next);
-    requestAnimationFrame(() => el.setSelectionRange(a + 2, a + 2));
-  };
-
   return (
     <div className="space-y-3 border-t border-stone-200 p-4 text-sm dark:border-stone-800">
       {target !== name && (
@@ -130,17 +127,13 @@ function FileEditor({ server, name, file, target }: { server: string; name: stri
           Leave those values as they are; everything else is yours to change.
         </p>
       )}
-      <textarea
-        aria-label={`Content of ${file.path}`}
-        value={text}
-        spellCheck={false}
-        onChange={(e) => setText(e.target.value)}
-        onKeyDown={onKeyDown}
-        className={cx(
-          'block h-96 w-full resize-y rounded-md border bg-stone-950 p-3 font-mono text-xs leading-relaxed text-stone-100',
-          problem ? 'border-red-500' : 'border-stone-300 dark:border-stone-700',
+      <Suspense fallback={<Spinner label="Loading the editor…" />}>
+        {file.format === 'json' ? (
+          <JsonEditor value={text} onChange={setText} indent={indentOf(loaded.content)} />
+        ) : (
+          <CodeEditor value={text} onChange={setText} format={file.format} label={`Content of ${file.path}`} />
         )}
-      />
+      </Suspense>
       {problem && <p className="text-xs text-red-700 dark:text-red-400">{problem}</p>}
       <div className="flex flex-wrap items-center gap-2">
         <Button
@@ -156,13 +149,10 @@ function FileEditor({ server, name, file, target }: { server: string; name: stri
         >
           <Save className="size-4" aria-hidden /> Save {file.path}
         </Button>
-        {file.format === 'json' && (
-          <Button variant="ghost" disabled={!!problem} onClick={() => setText(formatJson(text))}>
-            <WandSparkles className="size-4" aria-hidden /> Format
-          </Button>
-        )}
         {dirty && <Button variant="ghost" onClick={() => setText(loaded.content)}>Discard changes</Button>}
-        <span className="text-xs text-stone-500">{FORMAT_LABELS[file.format]}{file.format === 'php' ? ' — checked with php -l before saving (nothing is run)' : ' — checked before saving'}</span>
+        <span className="text-xs text-stone-500">
+          {file.format === 'json' ? 'Tree or text view (top-left of the editor); Format and Compact in its menu' : `${FORMAT_LABELS[file.format]}${file.format === 'php' ? ' — checked with php -l before saving (nothing is run)' : ' — checked before saving'}`}
+        </span>
       </div>
       {save.error && (
         <div className="space-y-1">
