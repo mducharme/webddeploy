@@ -302,6 +302,16 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
 
   srv.get('/doctor', async (c) => {
     const s = c.get('server');
+    // ?snapshot=1: ddeploy's last scheduled check, nothing run (instant).
+    // An older ddeploy has none: the checks run, cached as before.
+    if (c.req.query('snapshot')) {
+      const fresh = !!c.req.query('fresh');
+      const info = await s.cache.get('info', 5 * 60_000, () => s.client.info());
+      if (info.capabilities?.includes('doctor_snapshot')) {
+        return c.json(await s.cache.get('doctor:snapshot', 30_000, () => s.client.doctorSnapshot(), { fresh }));
+      }
+      return c.json(await s.cache.get('doctor:*', config.doctorCacheMs, () => s.client.doctor(), { fresh }));
+    }
     const site = c.req.query('site') || undefined;
     if (site && !patterns.siteName.test(site)) bad(`invalid site name '${site}'`);
     return c.json(await s.cache.get(`doctor:${site ?? '*'}`, config.doctorCacheMs, () => s.client.doctor(site), { fresh: !!c.req.query('fresh') }));

@@ -16,6 +16,8 @@ export type EventPhase = z.infer<typeof eventPhase>;
 
 export const ddeployEvent = z.object({
   ts: z.string(),
+  /** Fleet-wide, only grows: the change feed's cursor (ddeploy with the read index; absent before). */
+  seq: z.number().int().optional(),
   run_id: nullableString,
   site: z.string(),
   // deploy | rollback | provision | provision-preview | deploy-preview | remove-preview
@@ -43,6 +45,8 @@ export const infoResponse = z.object({
   base_domain: z.string(),
   php: z.object({ default: z.string(), baseline: z.array(z.string()), installed: z.array(z.string()) }),
   node: z.object({ enabled: z.boolean(), default: z.string() }),
+  /** What this ddeploy's api can do (absent from older ones): event_feed, doctor_snapshot. */
+  capabilities: z.array(z.string()).optional(),
   features: z.object({
     webhook: z.boolean(),
     backups: z.boolean(),
@@ -68,6 +72,9 @@ export type InfoResponse = z.infer<typeof infoResponse>;
 
 export const previewRef = z.object({ project: z.string(), branch: z.string(), mode: z.string() });
 
+export const checkStatus = z.enum(['ok', 'warn', 'fail', 'off']);
+export type CheckStatus = z.infer<typeof checkStatus>;
+
 export const siteSummary = z.object({
   name: z.string(),
   url: z.string(),
@@ -90,6 +97,9 @@ export const siteSummary = z.object({
   /** When the live code went live. */
   deployed_at: nullableString.optional(),
   last_backups: z.object({ database: ddeployEvent.nullable(), uploads: ddeployEvent.nullable() }).optional(),
+  /** The site's worst check in ddeploy's last doctor snapshot, and when that ran (absent: never checked, or an older ddeploy). */
+  health: checkStatus.optional(),
+  health_checked_at: z.string().optional(),
 });
 export type SiteSummary = z.infer<typeof siteSummary>;
 
@@ -146,7 +156,14 @@ export const siteDetailResponse = z.object({
 });
 export type SiteDetailResponse = z.infer<typeof siteDetailResponse>;
 
-export const eventsResponse = z.object({ ...versioned, events: z.array(ddeployEvent) });
+export const eventsResponse = z.object({
+  ...versioned,
+  /** The newest event's seq: where the next `--after` starts (absent from an older ddeploy: no change feed). */
+  seq: z.number().int().optional(),
+  /** With --after: events past the cursor were already trimmed away — reload instead of catching up. */
+  truncated: z.boolean().optional(),
+  events: z.array(ddeployEvent),
+});
 export type EventsResponse = z.infer<typeof eventsResponse>;
 
 export const preview = z.object({
@@ -165,13 +182,12 @@ export type Preview = z.infer<typeof preview>;
 export const previewsResponse = z.object({ ...versioned, project: z.string(), previews: z.array(preview) });
 export type PreviewsResponse = z.infer<typeof previewsResponse>;
 
-export const checkStatus = z.enum(['ok', 'warn', 'fail', 'off']);
-export type CheckStatus = z.infer<typeof checkStatus>;
-
 export const doctorCheck = z.object({ status: checkStatus, check: z.string(), detail: z.string() });
 export type DoctorCheck = z.infer<typeof doctorCheck>;
 
 export const doctorSite = z.object({
+  /** When this site was last checked (in a stored snapshot). */
+  checked_at: z.string().optional(),
   name: z.string(),
   worst: checkStatus,
   preview: z.object({ project: z.string(), mode: z.string() }).nullable(),
@@ -186,6 +202,15 @@ export const doctorResponse = z.object({
   sites: z.array(doctorSite),
 });
 export type DoctorResponse = z.infer<typeof doctorResponse>;
+
+/** `api doctor --snapshot`: the last stored checks, nothing run. Null parts were never checked. */
+export const doctorSnapshotResponse = z.object({
+  ...versioned,
+  checked_at: nullableString,
+  server: z.object({ checked_at: z.string().optional(), worst: checkStatus, checks: z.array(doctorCheck) }).nullable(),
+  sites: z.array(doctorSite),
+});
+export type DoctorSnapshotResponse = z.infer<typeof doctorSnapshotResponse>;
 
 export const logInfo = z.object({
   name: z.string(),

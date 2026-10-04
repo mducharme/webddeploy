@@ -10,6 +10,7 @@ import {
   envResponse,
   runCancelResponse,
   doctorResponse,
+  doctorSnapshotResponse,
   eventsResponse,
   infoResponse,
   inspectRepoResponse,
@@ -113,6 +114,11 @@ export class DdeployClient {
 
   doctor(site?: string) {
     return this.call(doctorResponse, site ? ['doctor', site] : ['doctor'], { timeoutMs: 180_000 });
+  }
+
+  /** The last stored checks (ddeploy's doctor cron), without running any. */
+  doctorSnapshot() {
+    return this.call(doctorSnapshotResponse, ['doctor', '--snapshot']);
   }
 
   logs() {

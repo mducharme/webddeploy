@@ -5,7 +5,7 @@ import { useMemo, useState } from 'react';
 import { Commit, Trigger } from '../components/RunTable.tsx';
 import { Badge, Card, ConfirmButton, Empty, ErrorBox, PhaseBadge, Spinner, StatusDot, Td, Th, cx, inputClass, InlineError } from '../components/ui.tsx';
 import { dateTime, kindLabel, relativeTime, shortSha } from '../lib/format.ts';
-import { useDeploy, useDoctor, useInfo, useRecentRuns, useRefreshFleet, useSiteNames, useSites } from '../lib/api.ts';
+import { useDeploy, useDoctor, useDoctorSnapshot, useInfo, useRecentRuns, useRefreshFleet, useSiteNames, useSites } from '../lib/api.ts';
 import { RunTable } from '../components/RunTable.tsx';
 import { useCan } from '../lib/role.tsx';
 import { useSearchState } from '../lib/searchState.ts';
@@ -27,7 +27,10 @@ export type FleetView = keyof typeof FLEET_VIEWS;
 export function Fleet() {
   const { server } = useParams({ from: '/s/$server/' });
   const sites = useSites(server);
-  const doctor = useDoctor(server);
+  // Each site's health comes with it (ddeploy's last scheduled check). An
+  // older ddeploy doesn't send it: then the checks run here, as before.
+  const hasHealth = !!sites.data?.sites.some((s) => s.health != null);
+  const doctor = useDoctor(server, undefined, { enabled: !!sites.data && !hasHealth });
   const refresh = useRefreshFleet(server);
   // Names come back at once; the full list (deploys, runs) a moment later.
   const names = useSiteNames(server);
@@ -36,6 +39,10 @@ export function Fleet() {
   const [view, setView] = useSearchState<FleetView>('view', 'all');
 
   const worst = useMemo(() => new Map<string, CheckStatus>(doctor.data?.sites.map((s) => [s.name, s.worst]) ?? []), [doctor.data]);
+  const healthOf = useMemo(
+    () => (s: SiteSummary) => siteHealth(s, hasHealth, doctor.data ? { checkedAt: doctor.data.checked_at, worst } : undefined),
+    [hasHealth, doctor.data, worst],
+  );
 
   const rows = useMemo(() => {
     const all = sites.data?.sites ?? [];
@@ -43,7 +50,7 @@ export function Fleet() {
     for (const s of all) if (s.preview) previewsOf.set(s.preview.project, [...(previewsOf.get(s.preview.project) ?? []), s]);
     const q = query.trim().toLowerCase();
     const matches = (s: SiteSummary) =>
-      (!q || [s.name, s.branch, s.repo, s.subject].some((v) => v?.toLowerCase().includes(q))) && FLEET_VIEWS[view].match(s, worst.get(s.name));
+      (!q || [s.name, s.branch, s.repo, s.subject].some((v) => v?.toLowerCase().includes(q))) && FLEET_VIEWS[view].match(s, statusOnly(healthOf(s)));
     const out: Array<{ site: SiteSummary; previews: number; nested: boolean }> = [];
     for (const s of all) {
       if (s.preview) continue;
@@ -56,7 +63,7 @@ export function Fleet() {
     // Previews whose parent isn't provisioned (anymore) still show up.
     for (const s of all) if (s.preview && !all.some((p) => p.name === s.preview!.project) && matches(s)) out.push({ site: s, previews: 0, nested: false });
     return out;
-  }, [sites.data, query, showPreviews, view, worst]);
+  }, [sites.data, query, showPreviews, view, healthOf]);
 
   const counts = useMemo(() => {
     const all = sites.data?.sites ?? [];
@@ -119,7 +126,7 @@ export function Fleet() {
           {/* Phones: one card per site instead of a table to scroll sideways. */}
           <ul className="divide-y divide-stone-100 md:hidden dark:divide-stone-800" data-testid="site-cards">
             {rows.map(({ site, previews, nested }) => (
-              <SiteCard key={site.name} server={server} site={site} previews={previews} nested={nested} status={doctor.data ? (worst.get(site.name) ?? 'off') : 'pending'} />
+              <SiteCard key={site.name} server={server} site={site} previews={previews} nested={nested} health={healthOf(site)} />
             ))}
           </ul>
           <div className="hidden overflow-x-auto md:block">
@@ -136,7 +143,7 @@ export function Fleet() {
               </thead>
               <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
                 {rows.map(({ site, previews, nested }) => (
-                  <SiteRow key={site.name} server={server} site={site} previews={previews} nested={nested} status={doctor.data ? (worst.get(site.name) ?? 'off') : 'pending'} />
+                  <SiteRow key={site.name} server={server} site={site} previews={previews} nested={nested} health={healthOf(site)} />
                 ))}
               </tbody>
             </table>
@@ -208,7 +215,33 @@ function PendingSites({ server, names, query, showPreviews }: { server: string; 
   );
 }
 
-function SiteCard({ server, site, previews, nested, status }: { server: string; site: SiteSummary; previews: number; nested: boolean; status: CheckStatus | 'pending' }) {
+export interface Health {
+  status: CheckStatus | 'pending';
+  /** When that check ran (absent: never checked, or still checking). */
+  checkedAt?: string;
+}
+
+/**
+ * A site's health dot: its own `health` (ddeploy's last scheduled check)
+ * when the sites payload carries it; otherwise (an older ddeploy) the
+ * checks run by this page, or "pending" while they do.
+ */
+export function siteHealth(s: SiteSummary, fromSites: boolean, checked?: { checkedAt: string; worst: Map<string, CheckStatus> }): Health {
+  if (fromSites) return { status: s.health ?? 'off', checkedAt: s.health_checked_at };
+  if (checked) return { status: checked.worst.get(s.name) ?? 'off', checkedAt: checked.checkedAt };
+  return { status: 'pending' };
+}
+
+const statusOnly = (h: Health): CheckStatus | undefined => (h.status === 'pending' ? undefined : h.status);
+
+export function healthLabel({ status, checkedAt }: Health): string {
+  if (status === 'pending') return 'checking…';
+  if (!checkedAt) return 'health: not checked yet';
+  return `health: ${status} · checked ${relativeTime(checkedAt)}`;
+}
+
+function SiteCard({ server, site, previews, nested, health }: { server: string; site: SiteSummary; previews: number; nested: boolean; health: Health }) {
+  const status = health.status;
   const deploy = useDeploy(server);
   const navigate = useNavigate();
   const canDeploy = useCan('admin');
@@ -219,7 +252,7 @@ function SiteCard({ server, site, previews, nested, status }: { server: string; 
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
-            <StatusDot status={status} label={status === 'pending' ? 'checking…' : `health: ${status}`} />
+            <StatusDot status={status} label={healthLabel(health)} />
             <Link to="/s/$server/sites/$name" params={{ server, name: site.name }} className="font-medium hover:underline">{site.name}</Link>
             {site.preview && <Badge tone="neutral">preview</Badge>}
             {previews > 0 && <span className="text-xs text-stone-500">{previews} preview{previews > 1 ? 's' : ''}</span>}
@@ -270,7 +303,8 @@ function SiteNameCell({ server, name, url, preview, previews, nested }: { server
   );
 }
 
-function SiteRow({ server, site, previews, nested, status }: { server: string; site: SiteSummary; previews: number; nested: boolean; status: CheckStatus | 'pending' }) {
+function SiteRow({ server, site, previews, nested, health }: { server: string; site: SiteSummary; previews: number; nested: boolean; health: Health }) {
+  const status = health.status;
   const deploy = useDeploy(server);
   const navigate = useNavigate();
   const canDeploy = useCan('admin');
@@ -283,7 +317,7 @@ function SiteRow({ server, site, previews, nested, status }: { server: string; s
     <tr className={cx('hover:bg-stone-50 dark:hover:bg-stone-800/40', (status === 'fail' || lastRun(site)?.phase === 'failed') && 'bg-red-50/50 dark:bg-red-950/20')}>
       <Td>
         <span className="mt-1.5 inline-block">
-          <StatusDot status={status} label={status === 'pending' ? 'checking…' : `health: ${status}`} />
+          <StatusDot status={status} label={healthLabel(health)} />
         </span>
       </Td>
       <Td>
@@ -341,25 +375,31 @@ function SiteRow({ server, site, previews, nested, status }: { server: string; s
 
 function ServerCard({ server }: { server: string }) {
   const info = useInfo(server);
-  const doctor = useDoctor(server);
-  const counts = doctor.data ? countStatuses(doctor.data) : null;
+  // The last scheduled check, not a new one: the homepage never waits on it.
+  const doctor = useDoctorSnapshot(server);
+  const server_ = doctor.data?.server ?? null;
+  const counts = doctor.data && server_ ? countStatuses({ ...doctor.data, server: server_, checked_at: doctor.data.checked_at ?? '' }) : null;
   const features = info.data?.features;
   return (
     <div className="grid gap-4 md:grid-cols-3">
       <Card className="p-4">
         <p className="text-xs uppercase tracking-wide text-stone-500">Server health</p>
         {doctor.isPending ? (
-          <p className="mt-2 text-sm text-stone-500">Running checks…</p>
+          <p className="mt-2 text-sm text-stone-500">Loading…</p>
         ) : doctor.error ? (
           <InlineError error={doctor.error} className="mt-2 text-sm text-red-700" />
+        ) : !server_ || !counts ? (
+          <Link to="/s/$server/status" params={{ server }} className="mt-2 block text-sm text-stone-500 hover:underline">
+            Not checked yet — run the checks
+          </Link>
         ) : (
           <Link to="/s/$server/status" params={{ server }} className="mt-2 block">
             <div className="flex items-center gap-2 text-lg font-semibold">
-              <StatusDot status={doctor.data.server.worst} />
-              {{ ok: 'Healthy', warn: 'Needs a look', fail: 'Failing', off: 'Off' }[doctor.data.server.worst]}
+              <StatusDot status={server_.worst} />
+              {{ ok: 'Healthy', warn: 'Needs a look', fail: 'Failing', off: 'Off' }[server_.worst]}
             </div>
             <p className="mt-1 text-sm text-stone-500">
-              {counts!.ok} ok · {counts!.warn} warn · {counts!.fail} fail · checked {relativeTime(doctor.data.checked_at)}
+              {counts.ok} ok · {counts.warn} warn · {counts.fail} fail · checked {relativeTime(doctor.data.checked_at ?? '')}
             </p>
           </Link>
         )}

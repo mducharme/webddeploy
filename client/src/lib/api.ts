@@ -20,6 +20,7 @@ import type {
   SettingsRequest,
   AuditEntry,
   DoctorResponse,
+  DoctorSnapshotResponse,
   InfoResponse,
   InspectRepoResponse,
   LogChunk,
@@ -76,6 +77,7 @@ export const keys = {
   siteRuns: (s: string, n: string) => ['siteRuns', s, n] as const,
   previews: (s: string, n: string) => ['previews', s, n] as const,
   doctor: (s: string, site?: string) => ['doctor', s, site ?? '*'] as const,
+  doctorSnapshot: (s: string) => ['doctorSnapshot', s] as const,
   logs: (s: string) => ['logs', s] as const,
   run: (s: string, id: string) => ['run', s, id] as const,
   runs: (s: string) => ['runs', s] as const,
@@ -103,24 +105,29 @@ export const useInfo = (server: string) =>
 export const useSiteNames = (server: string) =>
   useQuery({ queryKey: ['siteNames', server], queryFn: () => api<SiteNamesResponse>(`${base(server)}/site-names`), staleTime: 30_000 });
 
+// `api sites` reads ddeploy's index (cheap), and /live says when a site
+// changed (live.ts invalidates it): this interval is only a safety net.
 export const useSites = (server: string) =>
-  useQuery({ queryKey: keys.sites(server), queryFn: () => api<SitesResponse>(`${base(server)}/sites`), refetchInterval: 30_000 });
+  useQuery({ queryKey: keys.sites(server), queryFn: () => api<SitesResponse>(`${base(server)}/sites`), refetchInterval: 5 * 60_000 });
 
 /** Bypasses the server's cache: for decisions (is this name taken?) rather than display. */
 export const useFreshSites = (server: string) =>
   useQuery({ queryKey: [...keys.sites(server), 'fresh'], queryFn: () => api<SitesResponse>(`${base(server)}/sites?fresh=1`), staleTime: 0 });
 
-/** Homepage "Refresh": sites and health straight from ddeploy (the server's cache bypassed), then the activity. */
+/**
+ * Homepage "Refresh": sites straight from ddeploy at once, then a full
+ * health check (it takes a while); once that's stored, sites again, so
+ * each site's health reflects it. Then the activity.
+ */
 export function useRefreshFleet(server: string) {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: async () => {
-      const [sites, doctor] = await Promise.all([
-        api<SitesResponse>(`${base(server)}/sites?fresh=1`),
-        api<DoctorResponse>(`${base(server)}/doctor?fresh=1`),
-      ]);
-      qc.setQueryData(keys.sites(server), sites);
+      qc.setQueryData(keys.sites(server), await api<SitesResponse>(`${base(server)}/sites?fresh=1`));
+      const doctor = await api<DoctorResponse>(`${base(server)}/doctor?fresh=1`);
       qc.setQueryData(keys.doctor(server), doctor);
+      qc.setQueryData(keys.sites(server), await api<SitesResponse>(`${base(server)}/sites?fresh=1`));
+      await qc.invalidateQueries({ queryKey: keys.doctorSnapshot(server) });
       await qc.invalidateQueries({ queryKey: keys.runs(server) });
     },
   });
@@ -158,10 +165,21 @@ export const usePreviews = (server: string, name: string) =>
     queryFn: () => api<{ active: Preview[]; history: Run[] }>(`${base(server)}/sites/${name}/previews`),
   });
 
-export const useDoctor = (server: string, site?: string) =>
+/** Runs the checks (slow): the Status page and a site's Health tab. */
+export const useDoctor = (server: string, site?: string, opts: { enabled?: boolean } = {}) =>
   useQuery({
     queryKey: keys.doctor(server, site),
     queryFn: () => api<DoctorResponse>(`${base(server)}/doctor${site ? `?site=${site}` : ''}`),
+    staleTime: 60_000,
+    refetchInterval: 5 * 60_000,
+    enabled: opts.enabled ?? true,
+  });
+
+/** ddeploy's last scheduled check, nothing run (instant): summaries like the homepage's server card. */
+export const useDoctorSnapshot = (server: string) =>
+  useQuery({
+    queryKey: keys.doctorSnapshot(server),
+    queryFn: () => api<DoctorSnapshotResponse>(`${base(server)}/doctor?snapshot=1`),
     staleTime: 60_000,
     refetchInterval: 5 * 60_000,
   });

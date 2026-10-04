@@ -489,3 +489,108 @@ webddeploy 81 shared + 87 server + 50 client.
   forgetting are audited.
 - **Admins only**: it reaches out to other servers, like uploads change
   data.
+
+## Read path (2026-10-04)
+
+Every read recomputed the fleet: `api sites` ran `parse_config` (~40
+`yq` processes) per site, the fleet page also ran `doctor` (MySQL + HTTP
+per site), `/live` merge-sorted every site's event file every 3s, and a
+finished run invalidated the whole sites query. The Node SWR cache hid
+it; a cold read, a refresh or an SSH hop paid it all again.
+
+**Roles.** ddeploy owns correctness and makes every read cheap, for the
+CLI too. webddeploy mirrors what it reads into SQLite, refreshed from a
+change feed, so pages never wait on ddeploy. No root daemon, no change
+to the sudoers rule.
+
+### ddeploy
+
+1. **Benchmark** (`docker/test/bench.sh`): 20 and 50 fake sites, median
+   and p95 of `api sites`, `site`, `events`, `doctor`, plus processes
+   started per call. Run before and after each step.
+2. **Batched yq reads** (`yqc`, lib/common.sh), instead of a second
+   loader: `parse_config` itself stays the only parser, and each config
+   file costs one `yq` run (every known expression, each against its own
+   copy of the document) instead of ~40. Output is byte-identical to
+   `yq eval` (unit test over five config shapes); an unknown expression
+   falls through to real yq. Speeds up deploy, doctor and backups too.
+   Found on the way: `parse_config` rewrote `.steps` in place on every
+   read, so a read during a deploy could truncate the hooks it was
+   running; both steps files are now written to a temp file and renamed.
+3. **Fleet event tail and change feed.** `event_record` also appends to
+   `events/_fleet.jsonl`, append and trim under `flock` (per-site file
+   too). Every event gets a monotonic `seq`. `api events` without
+   `--site`/`--project` reads the tail; `--after <seq>` returns only
+   newer events: the change feed webddeploy follows.
+4. **Events for CLI writes.** `override`, `env`, `provision --branch`,
+   `remove` and `notify` record `settings-change`/`env-change`/`removed`
+   events like their API counterparts, so the change feed sees them.
+5. **Per-site index** (`/var/lib/ddeploy/index/<name>.json` + `.fp`,
+   root-only). The fingerprint is `INDEX_VERSION`, provisioner.conf, and
+   one `stat` per site over every input (configs, `package.json`,
+   lockfiles, `.nvmrc`, `deploy_branch`, `.deploys`, preview meta and
+   marker, events file, the `current` symlink), plus HEAD read as files.
+   A match is a `cat`; a miss rebuilds that row (temp file + `mv`).
+   Reads never take the site lock. Writers refresh their row (best
+   effort); correctness never depends on them. `ddeploy list` reads the
+   same rows.
+6. **Doctor snapshot.** `api doctor` writes `index/doctor.json`.
+   `doctor --snapshot` runs from `/etc/cron.d/ddeploy-doctor`
+   (`DOCTOR_SCHEDULE`, default every 10 min) and notifies only when a
+   check starts failing, and when it recovers. Site summaries gain
+   optional `health` and `health_checked_at`. CLI `doctor` and
+   `api doctor <name>` stay live.
+
+### webddeploy
+
+Built: the fleet page reads health from `sites` (drops `useDoctor`
+there, falls back to it with an older ddeploy) with the check's age;
+the server card reads `doctor?snapshot=1`; sites refetch every 5 min
+instead of 30 s (`/live` invalidates them); Refresh shows fresh sites at
+once, then runs the checks and refreshes again.
+
+**Deferred: steps 7–9 (the SQLite mirror).** Built and tested, then left
+out: with ddeploy's index, `api sites` is ~60–120 ms, and the existing
+cache already hides that for one local server. Worth it with SSH or a
+second server (pages independent of the hop, last known state when a
+server is down, one view across servers): bring it back then, on
+`api events --after` and the `event_feed` capability, which ddeploy
+already has.
+
+7. **SQLite mirror.** Tables for site summaries (by server and site, the
+   API's JSON as-is), events (by server and `seq`) and the doctor
+   snapshot. Never secrets: env values, DB credentials and config file
+   contents stay live `api` calls.
+8. **Sync loop per server.** Follow `api events --after <seq>`; an event
+   for a site refetches only that site; a full `api sites` reconcile
+   every few minutes catches what leaves no event; the doctor snapshot
+   on its own slower timer. A server that doesn't answer keeps its last
+   known state, shown with its age.
+9. **Routes read the mirror.** `/sites`, `/sites/:name` summary,
+   `/events`, `/live` and the fleet health come from SQLite. A write
+   (deploy, settings, env) triggers an immediate sync of that site.
+   `?fresh=1` forces a sync before answering.
+10. **Client.** The fleet page reads health from `sites` (drops
+    `useDoctor`), showing the check's age; drop the 30s sites refetch
+    (`/live` is the signal, with a slow safety refetch); site history
+    polls events only. Shared zod schemas accept the new optional
+    fields.
+11. **SSH connector**, when it lands: `ControlMaster=auto`,
+    `ControlPersist=5m`, one socket per server.
+
+**Out of scope:** a long-lived root API process; log following, run
+streaming, uploads.
+
+**As built (2026-10-04).** ddeploy advertises the feed in `api info`
+(`capabilities: event_feed, doctor_snapshot`); webddeploy reads live,
+as before, from a ddeploy without it. Health isn't stored in index rows
+(a doctor run would make every row stale): `api sites` adds it from the
+snapshot at read time. Site history stays a live `events --site` call
+(it reaches further back than the fleet feed keeps). The feed pages
+forward (`--after` returns the oldest events past the cursor) and says
+`truncated` when the cursor fell out of the trimmed tail. Benchmark
+(`docker/test/bench.sh`, median, 20 / 50 sites): `api sites` 959 / 2312
+ms → 66 / 122 ms; `api site` 305 / 321 → 48 / 43 ms; `list` 935 / 2099
+→ 61 / 107 ms; `api events` 48 / 70 → 33 / 30 ms. Rebuilding every row
+(after an upgrade, or a provisioner.conf change) costs what one old
+`api sites` did, once.

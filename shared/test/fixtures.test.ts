@@ -15,6 +15,7 @@ import {
   uploadsResponse,
   backupsResponse,
   doctorResponse,
+  doctorSnapshotResponse,
   eventsResponse,
   infoResponse,
   inspectRepoResponse,
@@ -52,6 +53,11 @@ const cases: Array<[string, z.ZodType]> = [
   ['commits', commitsResponse],
   ['uploads', uploadsResponse],
   ['backups', backupsResponse],
+  // The read index / change feed (ddeploy with capabilities event_feed, doctor_snapshot).
+  ['info-capabilities', infoResponse],
+  ['sites-health', sitesResponse],
+  ['events-feed', eventsResponse],
+  ['doctor-snapshot', doctorSnapshotResponse],
 ];
 
 describe('ddeploy api fixtures', () => {

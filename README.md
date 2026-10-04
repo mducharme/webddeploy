@@ -87,6 +87,12 @@ browser ──HTTPS──▶ nginx (ddeploy.<BASE_DOMAIN>) ──▶ webddeploy 
 - **Web actions are attributed to the signed-in user.** They appear as
   `web (<email>)` in ddeploy's own logs and Slack notifications. They're
   also recorded in this app's audit log (the Activity page).
+- **Health on the fleet page is ddeploy's last scheduled check.** ddeploy
+  runs `doctor --snapshot` on `DOCTOR_SCHEDULE` and sends each site's
+  result with `api sites` (`health`, `health_checked_at`); the page shows
+  it with its age instead of running the checks on every visit. Refresh
+  runs them now. Against an older ddeploy (no `doctor_snapshot` in
+  `api info` capabilities), the page runs the checks, as before.
 
 ## Layout
 

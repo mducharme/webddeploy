@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { LogView, segment } from '../src/components/LogView.tsx';
 import type { MaskedEnvEntry } from '../src/lib/api.ts';
 import { applyPasted, diff, parsePasted, rowError, rowsFrom } from '../src/lib/envEdit.ts';
-import { FLEET_VIEWS } from '../src/pages/Fleet.tsx';
+import { FLEET_VIEWS, healthLabel, siteHealth } from '../src/pages/Fleet.tsx';
 import { HISTORY_FILTERS } from '../src/pages/HistoryTab.tsx';
 import { settingsChange } from '../src/pages/SettingsTab.tsx';
 
@@ -141,5 +141,26 @@ describe('fleet views', () => {
   });
   it('running: last event is a start', () => {
     expect(FLEET_VIEWS.running.match(site({ last_event: ev('started') }))).toBe(true);
+  });
+});
+
+describe('fleet health', () => {
+  const site = (o: Partial<SiteSummary>) => ({ name: 'x', ...o }) as SiteSummary;
+  const at = new Date(Date.now() - 5 * 60_000).toISOString();
+  it("uses the site's own health from ddeploy's last check", () => {
+    expect(siteHealth(site({ health: 'warn', health_checked_at: at }), true)).toEqual({ status: 'warn', checkedAt: at });
+  });
+  it('a site ddeploy never checked is not checked yet, not failing', () => {
+    const h = siteHealth(site({}), true);
+    expect(h.status).toBe('off');
+    expect(healthLabel(h)).toBe('health: not checked yet');
+  });
+  it('an older ddeploy: the checks run by the page, pending until they answer', () => {
+    expect(siteHealth(site({}), false)).toEqual({ status: 'pending' });
+    expect(siteHealth(site({}), false, { checkedAt: at, worst: new Map([['x', 'fail']]) })).toEqual({ status: 'fail', checkedAt: at });
+  });
+  it('the label says how old the check is', () => {
+    expect(healthLabel({ status: 'ok', checkedAt: at })).toBe('health: ok · checked 5m ago');
+    expect(healthLabel({ status: 'pending' })).toBe('checking…');
   });
 });
