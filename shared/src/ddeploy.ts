@@ -33,6 +33,10 @@ export const ddeployEvent = z.object({
   project: z.string().optional(),
   duration_s: z.number().optional(),
   error: z.string().optional(),
+  /** A failed run: the step it failed at (ddeploy with steps). */
+  failed_step: z.string().optional(),
+  /** A failed deploy: "yes" if it failed after going live, "no" if the previous release still runs. */
+  live: z.string().optional(),
 });
 export type DdeployEvent = z.infer<typeof ddeployEvent>;
 
@@ -182,7 +186,15 @@ export type Preview = z.infer<typeof preview>;
 export const previewsResponse = z.object({ ...versioned, project: z.string(), previews: z.array(preview) });
 export type PreviewsResponse = z.infer<typeof previewsResponse>;
 
-export const doctorCheck = z.object({ status: checkStatus, check: z.string(), detail: z.string() });
+/** Where a check says to look: a log (and what to find in it), a run (and its step), a site tab. */
+export const doctorSee = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('log'), log: z.string(), find: z.string().nullable() }),
+  z.object({ type: z.literal('run'), run_id: z.string(), step: z.string().nullable() }),
+  z.object({ type: z.literal('tab'), tab: z.string() }),
+]);
+export type DoctorSee = z.infer<typeof doctorSee>;
+
+export const doctorCheck = z.object({ status: checkStatus, check: z.string(), detail: z.string(), see: doctorSee.nullable().optional() });
 export type DoctorCheck = z.infer<typeof doctorCheck>;
 
 export const doctorSite = z.object({
@@ -281,6 +293,15 @@ export const runMeta = z.object({
 });
 export type RunMeta = z.infer<typeof runMeta>;
 
+export const runStep = z.object({
+  id: z.string(),
+  label: z.string(),
+  status: z.enum(['running', 'ok', 'failed', 'skipped']),
+  started_at: z.string(),
+  duration_s: z.number().optional(),
+});
+export type RunStep = z.infer<typeof runStep>;
+
 export const runShowResponse = z.object({
   ...versioned,
   run_id: z.string(),
@@ -289,8 +310,36 @@ export const runShowResponse = z.object({
   unit: z.object({ load_state: nullableString, active_state: nullableString, result: nullableString }),
   log_size: z.number().nullable(),
   cancelled_by: nullableString.optional(),
+  /** The run's steps (ddeploy with steps; absent or [] for older runs). */
+  steps: z.array(runStep).optional(),
 });
 export type RunShowResponse = z.infer<typeof runShowResponse>;
+
+/** `api deploy-check`: is the tracked branch's head already live? */
+export const deployCheckResponse = z.object({
+  api_version: z.number(),
+  site: z.string(),
+  branch: z.string().nullable(),
+  live_sha: z.string().nullable(),
+  remote_sha: z.string().nullable(),
+  up_to_date: z.boolean().nullable(),
+  ahead: z.number().nullable(),
+  reachable: z.boolean(),
+});
+export type DeployCheckResponse = z.infer<typeof deployCheckResponse>;
+
+/** `api errors`: the site's errors, grouped by message. */
+export const errorsResponse = z.object({
+  api_version: z.number(),
+  site: z.string(),
+  log: z.string(),
+  since: z.string(),
+  total: z.number(),
+  groups: z.array(
+    z.object({ message: z.string(), severity: z.enum(['error', 'warning']), count: z.number(), first_seen: z.string(), last_seen: z.string(), request: z.string().nullable() }),
+  ),
+});
+export type ErrorsResponse = z.infer<typeof errorsResponse>;
 
 /** `api files <name>`: persistent config files the editor can open (not .env). */
 export const configFilesResponse = z.object({

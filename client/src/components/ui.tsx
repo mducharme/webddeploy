@@ -51,6 +51,8 @@ export function ConfirmButton({
   disabled,
   icon,
   typeToConfirm,
+  onAsk,
+  confirmNote,
 }: {
   /** May return a promise: the button then stays busy until it settles (the row gone, the list reloaded). */
   onConfirm: () => void | Promise<unknown>;
@@ -63,6 +65,10 @@ export function ConfirmButton({
   icon?: ReactNode;
   /** Replacing or deleting live data: the site's name must be typed first. */
   typeToConfirm?: string;
+  /** Called when the confirmation opens (to look something up for confirmNote). */
+  onAsk?: () => void;
+  /** Shown with the confirmation: what's about to happen. */
+  confirmNote?: ReactNode;
 }) {
   const [asking, setAsking] = useState(false);
   const [typed, setTyped] = useState('');
@@ -73,6 +79,7 @@ export function ConfirmButton({
   if (asking && !isBusy) {
     return (
       <span className="inline-flex flex-wrap items-center justify-end gap-1">
+        {confirmNote && <span className="w-full text-right text-xs text-stone-600 dark:text-stone-400" data-testid="confirm-note">{confirmNote}</span>}
         {typeToConfirm && (
           <input
             autoFocus
@@ -106,7 +113,14 @@ export function ConfirmButton({
     );
   }
   return (
-    <Button onClick={() => setAsking(true)} busy={isBusy} disabled={disabled || isBusy}>
+    <Button
+      onClick={() => {
+        setAsking(true);
+        onAsk?.();
+      }}
+      busy={isBusy}
+      disabled={disabled || isBusy}
+    >
       {!isBusy && icon}
       {isBusy && busyLabel ? busyLabel : label}
     </Button>

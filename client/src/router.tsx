@@ -45,7 +45,13 @@ const siteRoute = createRoute({
   validateSearch: z.object({ tab: z.enum(SITE_TABS).default('overview').catch('overview'), log: z.enum(['error', 'access']).optional().catch(undefined) }),
   component: SitePage,
 });
-const runRoute = createRoute({ getParentRoute: () => serverRoute, path: 'runs/$id', component: RunPage });
+const runRoute = createRoute({
+  getParentRoute: () => serverRoute,
+  path: 'runs/$id',
+  component: RunPage,
+  // step: open the run on that step's output (doctor's "show me" links).
+  validateSearch: z.object({ step: z.string().max(200).optional().catch(undefined) }),
+});
 const statusRoute = createRoute({
   getParentRoute: () => serverRoute,
   path: 'status',
@@ -55,7 +61,8 @@ const statusRoute = createRoute({
 const logsRoute = createRoute({
   getParentRoute: () => serverRoute,
   path: 'logs',
-  validateSearch: z.object({ name: z.string().optional() }),
+  // find: open the log already filtered to that text (doctor's "show me" links).
+  validateSearch: z.object({ name: z.string().optional(), find: z.string().max(200).optional().catch(undefined) }),
   component: Logs,
 });
 const backupsRoute = createRoute({ getParentRoute: () => serverRoute, path: 'backups', component: BackupsPage });

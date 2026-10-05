@@ -23,6 +23,10 @@ export interface Run {
   branch: string | null;
   project: string | null;
   error: string | null;
+  /** A failed run: the step it failed at. */
+  failed_step?: string | null;
+  /** A failed deploy: true if it failed after going live, false if the previous release still runs, null if unknown. */
+  went_live?: boolean | null;
   /** From the pre-event-log `.deploys` file: only a timestamp and a SHA. */
   legacy?: boolean;
 }
@@ -82,6 +86,8 @@ export function collapseRuns(events: readonly DdeployEvent[], now: Date = new Da
       branch: pick('branch') ?? null,
       project: pick('project') ?? null,
       error: final?.error ?? null,
+      failed_step: final?.failed_step ?? null,
+      went_live: final?.live === 'yes' ? true : final?.live === 'no' ? false : null,
     });
     const run = runs[runs.length - 1]!;
     if (run.phase === 'running' && run.started_at && now.getTime() - Date.parse(run.started_at) > STALE_RUN_MS) {
@@ -197,3 +203,20 @@ export function parseTrigger(trigger: string, author?: string | null): Actor {
 }
 
 export const PREVIEW_KINDS: ReadonlySet<string> = new Set(['provision-preview', 'deploy-preview', 'remove-preview']);
+
+/**
+ * How a code run relates to the history before it: "same" when it deployed
+ * the commit that was already live (nothing new — a redeploy), "earlier"
+ * when it went back to a commit an earlier deploy already shipped (a
+ * rollback, by whatever name). `history` is newest first, as listed.
+ */
+export function deployRelation(run: Run, history: readonly Run[]): { kind: 'same' } | { kind: 'earlier'; run: Run } | null {
+  if (!run.to_sha || run.phase !== 'succeeded') return null;
+  if (run.from_sha && run.from_sha === run.to_sha) return { kind: 'same' };
+  const i = history.findIndex((r) => r.run_id === run.run_id);
+  const older = i >= 0 ? history.slice(i + 1) : [];
+  // Not the run right before it (that's "same", above): an older one.
+  const earlier = older.find((r) => r.phase === 'succeeded' && r.to_sha === run.to_sha && r.run_id !== run.run_id && r !== older[0]);
+  if (earlier && older[0]?.to_sha !== run.to_sha) return { kind: 'earlier', run: earlier };
+  return null;
+}

@@ -1,11 +1,11 @@
 import { Link } from '@tanstack/react-router';
-import { CHANGE_KINDS, type Run, type SiteDetailResponse } from '@webddeploy/shared';
+import { CHANGE_KINDS, type DoctorCheck, type Run, type SiteDetailResponse } from '@webddeploy/shared';
 import { CheckCircle2, Circle, X } from 'lucide-react';
 import { useState } from 'react';
-import { Checks } from '../components/Checks.tsx';
+import { Checks, SeeLink } from '../components/Checks.tsx';
 import { Commit, Trigger } from '../components/RunTable.tsx';
 import { Card, ErrorBox, PhaseBadge, Spinner, StatusDot, Mono, InlineError } from '../components/ui.tsx';
-import { useDbInfo, useDoctor, useEnv, useInfo, useSiteRuns, useUploads } from '../lib/api.ts';
+import { useDbInfo, useDoctor, useEnv, useErrors, useInfo, useSiteRuns, useUploads } from '../lib/api.ts';
 import { duration, kindLabel, relativeTime } from '../lib/format.ts';
 import type { SiteTab } from './Site.tsx';
 import { RollbackButton } from './siteShared.tsx';
@@ -79,22 +79,106 @@ export function OverviewTab({ server, detail }: { server: string; detail: SiteDe
         </Card>
       </div>
 
-      {isAdmin && last?.phase === 'failed' && isCodeRun(last) && lastGood?.to_sha && (
-        <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-900 dark:border-red-900 dark:bg-red-950 dark:text-red-200">
-          <span>
-            The last {kindLabel(last.kind).toLowerCase()} failed{last.kind === 'deploy' ? ' — the previous release is still live' : ''}. Fix the
-            cause and deploy again, or roll back to the last good deploy ({relativeTime(lastGood.finished_at)}).
-          </span>
-          <RollbackButton server={server} name={name} sha={lastGood.to_sha} label="Roll back" />
-        </div>
-      )}
-
-      {problems.length > 0 && (
-        <Card title="Needs attention">
-          <Checks checks={problems} />
-        </Card>
-      )}
+      <Diagnosis server={server} detail={detail} problems={problems} last={last} lastGood={lastGood} codeRuns={codeRuns} isAdmin={isAdmin} />
     </div>
+  );
+}
+
+/**
+ * "Why is this site unhappy?" in one place: a failed deploy (which step,
+ * whether it went live), what a failing request logged, the other failing
+ * checks — each with a link to exactly where it's explained — and the
+ * errors logged since the last deploy.
+ */
+function Diagnosis({
+  server,
+  detail,
+  problems,
+  last,
+  lastGood,
+  codeRuns,
+  isAdmin,
+}: {
+  server: string;
+  detail: SiteDetailResponse;
+  problems: DoctorCheck[];
+  last: Run | undefined;
+  lastGood: Run | undefined;
+  codeRuns: Run[];
+  isAdmin: boolean;
+}) {
+  const name = detail.site.name;
+  const lastOk = codeRuns.find((r) => r.phase === 'succeeded');
+  const errors = useErrors(server, name, lastOk?.finished_at ?? null);
+  const failedDeploy = last && last.phase === 'failed' && isCodeRun(last) ? last : null;
+  const http = problems.find((c) => c.check === 'http');
+  // "last run" repeats the failed deploy shown above it; "http" gets its own line.
+  const others = problems.filter((c) => c !== http && !(failedDeploy && c.check === 'last run'));
+  const topErrors = (errors.data?.groups ?? []).filter((g) => g.severity === 'error').slice(0, 3);
+  if (!failedDeploy && problems.length === 0 && topErrors.length === 0) return null;
+  const recent = lastOk?.finished_at ? Date.now() - Date.parse(lastOk.finished_at) < 24 * 3600_000 : false;
+  return (
+    <Card title="Diagnosis" className="border-amber-300 dark:border-amber-900">
+      <div className="divide-y divide-stone-100 text-sm dark:divide-stone-800" data-testid="diagnosis">
+        {failedDeploy && (
+          <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
+            <div className="min-w-0 space-y-1">
+              <p className="font-medium text-red-800 dark:text-red-300">
+                The last {kindLabel(failedDeploy.kind).toLowerCase()} failed{failedDeploy.failed_step ? <> at “{failedDeploy.failed_step}”</> : null} — {relativeTime(failedDeploy.finished_at)}
+              </p>
+              <p className="text-stone-600 dark:text-stone-400">
+                {failedDeploy.went_live === false
+                  ? 'It stopped before going live: the site still runs the previous release.'
+                  : failedDeploy.went_live === true
+                    ? 'It failed after going live: the new code is running, but the deploy didn’t finish.'
+                    : 'The previous release is normally still live after a failed deploy.'}
+                {failedDeploy.error && <span className="block text-xs text-red-700 dark:text-red-400">{failedDeploy.error}</span>}
+              </p>
+            </div>
+            <span className="flex flex-wrap gap-2">
+              <SeeLink see={{ type: 'run', run_id: failedDeploy.run_id, step: failedDeploy.failed_step ?? null }} server={server} />
+              {isAdmin && lastGood?.to_sha && <RollbackButton server={server} name={name} sha={lastGood.to_sha} label="Roll back" />}
+            </span>
+          </div>
+        )}
+        {http && (
+          <div className="flex flex-wrap items-start justify-between gap-3 px-4 py-3">
+            <div className="min-w-0 space-y-1">
+              <p className="font-medium text-red-800 dark:text-red-300">The site answers with an error</p>
+              <p className="break-words font-mono text-xs text-stone-700 dark:text-stone-300">{http.detail}</p>
+              <p className="text-xs text-stone-500">
+                {failedDeploy
+                  ? 'The failed deploy above is the first thing to look at.'
+                  : lastOk?.finished_at
+                    ? recent
+                      ? `The last deploy (${relativeTime(lastOk.finished_at)}) is a likely cause — compare with the deploy before it, or roll back.`
+                      : `Nothing was deployed recently (last deploy ${relativeTime(lastOk.finished_at)}, it went fine): the cause is likely elsewhere — data, a dependency, the server.`
+                    : null}
+              </p>
+            </div>
+            {http.see && <SeeLink see={http.see} server={server} site={name} />}
+          </div>
+        )}
+        {others.length > 0 && <Checks checks={others} server={server} site={name} />}
+        {topErrors.length > 0 && (
+          <div className="space-y-1.5 px-4 py-3" data-testid="top-errors">
+            <p className="font-medium">Errors {lastOk?.finished_at ? `since the last deploy (${relativeTime(lastOk.finished_at)})` : 'in the last 24 hours'}</p>
+            <ul className="space-y-1">
+              {topErrors.map((g) => (
+                <li key={g.message} className="flex items-start gap-2 text-xs">
+                  <span className="shrink-0 rounded bg-red-100 px-1.5 font-mono tabular-nums text-red-800 dark:bg-red-950 dark:text-red-300">×{g.count}</span>
+                  <span className="min-w-0 flex-1 break-words font-mono text-stone-700 dark:text-stone-300">{g.message}</span>
+                  <SeeLink see={{ type: 'log', log: errors.data!.log, find: g.message.slice(0, 60) }} server={server} />
+                </li>
+              ))}
+            </ul>
+            <Link to="/s/$server/sites/$name" params={{ server, name }} search={{ tab: 'health' }} className="text-xs text-teal-700 hover:underline dark:text-teal-400">
+              All errors →
+            </Link>
+          </div>
+        )}
+      </div>
+    </Card>
   );
 }
 

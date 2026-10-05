@@ -417,7 +417,7 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
 
   srv.get('/runs/:id', async (c) => {
     const show = await c.get('server').client.runShow(runParam(c));
-    return c.json({ run: runFromShow(show, new Date(now())), meta: show.meta, log_size: show.log_size });
+    return c.json({ run: runFromShow(show, new Date(now())), meta: show.meta, log_size: show.log_size, steps: show.steps ?? [] });
   });
 
   srv.get('/runs/:id/log', async (c) => {
@@ -509,6 +509,21 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
   // --- environment -------------------------------------------------------
   // Secret-looking values never leave the server unless asked for one at
   // a time (audited); the rest are shown as they are.
+
+  // --- debugging: is a deploy going to change anything, what is the site complaining about
+
+  srv.get('/sites/:name/deploy-check', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    return c.json(await s.cache.get(`site:${name}:deploy-check`, 10_000, () => s.client.deployCheck(name)));
+  });
+
+  srv.get('/sites/:name/errors', async (c) => {
+    const s = c.get('server');
+    const since = c.req.query('since');
+    if (since && !/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$/.test(since)) bad('since: an ISO time like 2026-10-04T12:00:00Z');
+    return c.json(await s.client.errors(siteParam(c), since || undefined));
+  });
 
   // --- queue workers and scheduled tasks ------------------------------------
 

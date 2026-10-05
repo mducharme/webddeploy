@@ -82,17 +82,20 @@ export function LogView({
   placeholder = 'No output yet.',
   className,
   filename = 'output.log',
+  initialQuery = '',
 }: {
   text: string;
   placeholder?: string;
   className?: string;
   /** For the download button. */
   filename?: string;
+  /** Start filtered to this (a link pointing at a specific error). */
+  initialQuery?: string;
 }) {
   const ref = useRef<HTMLPreElement>(null);
   const firstError = useRef<HTMLSpanElement | null>(null);
   const [stick, setStick] = useState(true);
-  const [query, setQuery] = useState('');
+  const [query, setQuery] = useState(initialQuery);
   const [wrap, setWrap] = useState(true);
   const [localTime, setLocalTime] = useState(false);
   const hasUtc = useMemo(() => /^\s*\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z/m.test(raw.slice(0, 4000)), [raw]);

@@ -9,7 +9,7 @@ import { LogStream } from './Site.tsx';
 /** Server-wide nginx and PHP-FPM logs first, as quick buttons; then everything, grouped. */
 export function Logs() {
   const { server } = useParams({ from: '/s/$server/logs' });
-  const { name } = useSearch({ from: '/s/$server/logs' });
+  const { name, find } = useSearch({ from: '/s/$server/logs' });
   const navigate = useNavigate({ from: '/s/$server/logs' });
   const logs = useLogs(server);
   const open = (n: string) => void navigate({ search: { name: n } });
@@ -72,7 +72,7 @@ export function Logs() {
           )}
         </Card>
         {name ? (
-          <LogStream key={name} server={server} name={name} title={selected?.label ? `${selected.site ? `${selected.site} — ` : ''}${selected.label}` : name} />
+          <LogStream key={`${name}|${find ?? ''}`} server={server} name={name} initialQuery={find} title={selected?.label ? `${selected.site ? `${selected.site} — ` : ''}${selected.label}` : name} />
         ) : (
           <Card className="p-6 text-sm text-stone-500">Pick a log to follow it live.</Card>
         )}

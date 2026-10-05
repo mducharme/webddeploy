@@ -3,6 +3,7 @@ import type { SiteDetailResponse } from '@webddeploy/shared';
 import { ExternalLink } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { Checks } from '../components/Checks.tsx';
+import { ErrorsPanel } from '../components/ErrorsPanel.tsx';
 import { LogView } from '../components/LogView.tsx';
 import { Commit } from '../components/RunTable.tsx';
 import { DatabaseTab } from './DatabaseTab.tsx';
@@ -111,12 +112,12 @@ export function emptyLogText(name: string): string {
 }
 
 /** Follows one log live. */
-export function LogStream({ server, name, title }: { server: string; name: string; title?: ReactNode }) {
+export function LogStream({ server, name, title, initialQuery }: { server: string; name: string; title?: ReactNode; initialQuery?: string }) {
   const [attempt, setAttempt] = useState(0);
-  return <LogStreamInner key={attempt} server={server} name={name} title={title} onReconnect={() => setAttempt((n) => n + 1)} />;
+  return <LogStreamInner key={attempt} server={server} name={name} title={title} initialQuery={initialQuery} onReconnect={() => setAttempt((n) => n + 1)} />;
 }
 
-function LogStreamInner({ server, name, title, onReconnect }: { server: string; name: string; title?: ReactNode; onReconnect: () => void }) {
+function LogStreamInner({ server, name, title, initialQuery, onReconnect }: { server: string; name: string; title?: ReactNode; initialQuery?: string; onReconnect: () => void }) {
   const stream = useOutputStream(logStreamUrl(server, name));
   const lost = !stream.connected && !stream.ended && (stream.loaded || !!stream.error);
   return (
@@ -130,7 +131,7 @@ function LogStreamInner({ server, name, title, onReconnect }: { server: string; 
       }
     >
       {stream.error && <ErrorBox error={stream.error} title="Couldn't read the log" />}
-      <LogView filename={`${name}.log`} text={stream.text} placeholder={stream.loaded ? emptyLogText(name) : 'Loading the log…'} className="rounded-b-lg" />
+      <LogView filename={`${name}.log`} initialQuery={initialQuery} text={stream.text} placeholder={stream.loaded ? emptyLogText(name) : 'Loading the log…'} className="rounded-b-lg" />
     </Card>
   );
 }
@@ -177,9 +178,12 @@ function HealthTab({ server, name }: { server: string; name: string }) {
   if (doctor.error) return <ErrorBox error={doctor.error} />;
   const site = doctor.data.sites.find((s) => s.name === name);
   return (
-    <Card title="Health checks" actions={<span className="text-xs text-stone-500">checked {relativeTime(doctor.data.checked_at)}</span>}>
-      <Checks checks={site?.checks ?? []} />
-    </Card>
+    <div className="space-y-4">
+      <Card title="Health checks" actions={<span className="text-xs text-stone-500">checked {relativeTime(doctor.data.checked_at)}</span>}>
+        <Checks checks={site?.checks ?? []} server={server} site={name} />
+      </Card>
+      <ErrorsPanel server={server} name={name} />
+    </div>
   );
 }
 

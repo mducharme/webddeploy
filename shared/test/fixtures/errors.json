@@ -1,0 +1,25 @@
+{
+    "api_version": 1,
+    "site": "testsite",
+    "log": "testsite.error",
+    "since": "2026-10-04T14:00:00Z",
+    "total": 5,
+    "groups": [
+        {
+            "message": "PHP Fatal error:  Uncaught Error: Call to undefined function ddeploy_probe_undefined_function() in /home/deploy/sites/testsite/releases/20261004T140000Z-c3e2aef0a1b2-1/web/index.php:2",
+            "severity": "error",
+            "count": 4,
+            "first_seen": "2026-10-05T13:01:02Z",
+            "last_seen": "2026-10-05T13:01:09Z",
+            "request": "GET / HTTP/2.0"
+        },
+        {
+            "message": "access forbidden by rule",
+            "severity": "error",
+            "count": 1,
+            "first_seen": "2026-10-05T12:50:00Z",
+            "last_seen": "2026-10-05T12:50:00Z",
+            "request": "GET /uploads/evil.php HTTP/2.0"
+        }
+    ]
+}

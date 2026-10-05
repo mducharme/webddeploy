@@ -53,6 +53,8 @@ export class FakeConnector implements Connector {
       case 'sites': return fixture('sites');
       case 'site-names': return fixture('site-names');
       case 'workers': return fixture('workers');
+      case 'deploy-check': return fixture('deploy-check');
+      case 'errors': return fixture('errors');
       case 'schedules': return fixture('workers');
       case 'site':
         if (args[1] === 'nope') throw new DdeployError('not_found', "'nope' is not provisioned");

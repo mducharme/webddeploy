@@ -23,6 +23,8 @@ import {
   siteDetailResponse,
   sitesResponse,
   uploadsResponse,
+  deployCheckResponse,
+  errorsResponse,
   workersResponse,
   siteNamesResponse,
   configFilesResponse,
@@ -169,6 +171,14 @@ export class DdeployClient {
 
   cancelRun(id: string, actor: string) {
     return this.call(runCancelResponse, ['run', 'cancel', id, '--actor', actor]);
+  }
+
+  deployCheck(site: string) {
+    return this.call(deployCheckResponse, ['deploy-check', site], { timeoutMs: 45_000 });
+  }
+
+  errors(site: string, since?: string) {
+    return this.call(errorsResponse, ['errors', site, ...(since ? ['--since', since] : [])], { timeoutMs: 60_000 });
   }
 
   workers(site: string) {

@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router';
 import { useState, type ReactNode } from 'react';
-import { parseTrigger, patterns, type Run } from '@webddeploy/shared';
-import { commitUrl, duration, kindLabel, relativeTime, shortSha } from '../lib/format.ts';
+import { deployRelation, parseTrigger, patterns, type Run } from '@webddeploy/shared';
+import { commitUrl, dateTime, duration, kindLabel, relativeTime, shortSha } from '../lib/format.ts';
 import { Empty, Mono, PhaseBadge, Td, Th } from './ui.tsx';
 
 export function Trigger({ trigger, author }: { trigger: string; author?: string | null }) {
@@ -102,11 +102,15 @@ export function RunTable({
               </Td>
               <Td>
                 <PhaseBadge phase={r.phase} />
+                {r.failed_step && <span className="ml-1 text-xs text-red-700 dark:text-red-400">at {r.failed_step}</span>}
                 {r.error && <p className="mt-1 max-w-md text-xs text-red-700 dark:text-red-400">{r.error}</p>}
               </Td>
               <Td>
                 {r.to_sha ? (
-                  <Commit sha={r.to_sha} repo={repo} subject={r.subject} />
+                  <>
+                    <Commit sha={r.to_sha} repo={repo} subject={r.subject} />
+                    <RelationNote run={r} runs={runs} />
+                  </>
                 ) : r.subject ? (
                   <span className="block max-w-[26rem] truncate text-stone-600 dark:text-stone-400" title={r.subject}>{r.subject}</span>
                 ) : null}
@@ -126,5 +130,19 @@ export function RunTable({
         </div>
       )}
     </div>
+  );
+}
+
+const CODE_KINDS = new Set(['deploy', 'rollback', 'deploy-preview']);
+
+/** "same commit as before" / "same as Oct 2": a deploy that brought nothing new, or brought old code back. */
+function RelationNote({ run, runs }: { run: Run; runs: readonly Run[] }) {
+  if (!CODE_KINDS.has(run.kind)) return null;
+  const rel = deployRelation(run, runs.filter((r) => r.site === run.site && CODE_KINDS.has(r.kind)));
+  if (!rel) return null;
+  return (
+    <span className="mt-0.5 block text-xs text-stone-500" data-testid="relation-note">
+      {rel.kind === 'same' ? 'same commit as before — nothing new' : `same as the deploy of ${dateTime(rel.run.finished_at ?? rel.run.started_at)}`}
+    </span>
   );
 }

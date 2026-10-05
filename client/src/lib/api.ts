@@ -5,6 +5,9 @@ import type {
   DbInfoResponse,
   UploadsResponse,
   BackupsResponse,
+  DeployCheckResponse,
+  ErrorsResponse,
+  RunStep,
   WorkersResponse,
   SiteNamesResponse,
   ConfigFileResponse,
@@ -191,7 +194,9 @@ export const useLogs = (server: string) =>
 export const useRun = (server: string, id: string) =>
   useQuery({
     queryKey: keys.run(server, id),
-    queryFn: () => api<{ run: Run; meta: RunMeta | null; log_size: number | null }>(`${base(server)}/runs/${id}`),
+    queryFn: () => api<{ run: Run; meta: RunMeta | null; log_size: number | null; steps: RunStep[] }>(`${base(server)}/runs/${id}`),
+    // Steps tick over while it runs; settled runs don't change.
+    refetchInterval: (q) => (q.state.data && ['succeeded', 'failed', 'skipped', 'unknown'].includes(q.state.data.run.phase) ? false : 3000),
   });
 
 export const useRecentRuns = (server: string, limit = 15) =>
@@ -235,6 +240,22 @@ export interface MaskedEnv {
   entries: MaskedEnvEntry[];
   unparsed_lines: number;
 }
+
+/** Is the tracked branch's head already live? Asked when a deploy is about to be confirmed. */
+export const useDeployCheck = (server: string, name: string, enabled: boolean) =>
+  useQuery({
+    queryKey: ['deploy-check', server, name],
+    queryFn: () => api<DeployCheckResponse>(`${base(server)}/sites/${name}/deploy-check`),
+    enabled,
+    staleTime: 10_000,
+  });
+
+export const useErrors = (server: string, name: string, since?: string | null) =>
+  useQuery({
+    queryKey: ['errors', server, name, since ?? ''],
+    queryFn: () => api<ErrorsResponse>(`${base(server)}/sites/${name}/errors${since ? `?since=${encodeURIComponent(since)}` : ''}`),
+    staleTime: 30_000,
+  });
 
 export const useWorkers = (server: string, name: string) =>
   useQuery({

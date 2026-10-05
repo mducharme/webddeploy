@@ -19,7 +19,9 @@ export function finishedToast(run: Run) {
   if (run.phase === 'succeeded') return { tone: 'success' as const, message: `${what} succeeded`, detail: run.subject ?? undefined };
   if (run.phase === 'failed') {
     const hint = hintFor(run.error);
-    return { tone: 'error' as const, message: `${what} failed`, detail: [run.error, hint?.next].filter(Boolean).join(' — ') || undefined };
+    const where = run.failed_step ? ` at “${run.failed_step}”` : '';
+    const live = run.went_live === false ? 'The previous release is still live.' : run.went_live === true ? 'It failed after going live.' : null;
+    return { tone: 'error' as const, message: `${what} failed${where}`, detail: [live, run.error, hint?.next].filter(Boolean).join(' — ') || undefined };
   }
   return { tone: 'info' as const, message: `${what}: ${run.phase}` };
 }

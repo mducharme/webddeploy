@@ -1,13 +1,14 @@
-import { Link, useNavigate, useParams } from '@tanstack/react-router';
+import { Link, useParams } from '@tanstack/react-router';
 import { countStatuses, type CheckStatus, type SiteNamesResponse, type SiteSummary } from '@webddeploy/shared';
-import { ExternalLink, LayoutGrid, Loader2, RefreshCw, Rocket, Rows3, Search } from 'lucide-react';
+import { ExternalLink, LayoutGrid, Loader2, RefreshCw, Rows3, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Commit, Trigger } from '../components/RunTable.tsx';
-import { Badge, Card, ConfirmButton, Empty, ErrorBox, PhaseBadge, Spinner, StatusDot, Td, Th, cx, inputClass, InlineError } from '../components/ui.tsx';
+import { Badge, Card, Empty, ErrorBox, PhaseBadge, Spinner, StatusDot, Td, Th, cx, inputClass, InlineError } from '../components/ui.tsx';
 import { dateTime, kindLabel, relativeTime, shortSha } from '../lib/format.ts';
-import { useDeploy, useDoctor, useDoctorSnapshot, useInfo, useRecentRuns, useRefreshFleet, useSiteNames, useSites } from '../lib/api.ts';
+import { useDoctor, useDoctorSnapshot, useInfo, useRecentRuns, useRefreshFleet, useSiteNames, useSites } from '../lib/api.ts';
 import { RunTable } from '../components/RunTable.tsx';
 import { useCan } from '../lib/role.tsx';
+import { DeployNowButton } from './siteShared.tsx';
 import { useSearchState } from '../lib/searchState.ts';
 import { RefreshBar } from '../components/RefreshBar.tsx';
 
@@ -302,8 +303,6 @@ export function healthLabel({ status, checkedAt }: Health): string {
 
 function SiteCard({ server, site, previews, nested, health, boxed }: { server: string; site: SiteSummary; previews: number; nested: boolean; health: Health; boxed?: boolean }) {
   const status = health.status;
-  const deploy = useDeploy(server);
-  const navigate = useNavigate();
   const canDeploy = useCan('admin');
   const ev = lastRun(site);
   const deployedAt = site.deployed_at ?? site.last_deploy?.ts ?? null;
@@ -329,13 +328,7 @@ function SiteCard({ server, site, previews, nested, health, boxed }: { server: s
           </a>
         </div>
         {!site.preview && canDeploy && (
-          <ConfirmButton
-            label="Deploy" busyLabel="Starting…"
-            confirmLabel={`Deploy ${site.name}`}
-            icon={<Rocket className="size-4" aria-hidden />}
-            busy={deploy.isPending}
-            onConfirm={() => deploy.mutateAsync(site.name, { onSuccess: ({ run_id }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } }) })}
-          />
+          <DeployNowButton server={server} name={site.name} />
         )}
       </div>
       <div className="text-xs text-stone-500">{site.branch ?? 'detached'} · <Commit sha={site.sha} repo={site.repo} subject={site.subject} /></div>
@@ -372,8 +365,6 @@ function SiteNameCell({ server, name, url, preview, previews, nested }: { server
 
 function SiteRow({ server, site, previews, nested, health }: { server: string; site: SiteSummary; previews: number; nested: boolean; health: Health }) {
   const status = health.status;
-  const deploy = useDeploy(server);
-  const navigate = useNavigate();
   const canDeploy = useCan('admin');
   const ev = lastRun(site);
   const phase = ev ? (ev.phase === 'started' ? 'running' : ev.phase) : null;
@@ -424,17 +415,8 @@ function SiteRow({ server, site, previews, nested, health }: { server: string; s
       </Td>
       <Td className="text-right">
         {!site.preview && canDeploy && (
-          <ConfirmButton
-            label="Deploy" busyLabel="Starting…"
-            confirmLabel={`Deploy ${site.name}`}
-            icon={<Rocket className="size-4" aria-hidden />}
-            busy={deploy.isPending}
-            onConfirm={() =>
-              deploy.mutateAsync(site.name, { onSuccess: ({ run_id }) => void navigate({ to: '/s/$server/runs/$id', params: { server, id: run_id } }) })
-            }
-          />
+          <DeployNowButton server={server} name={site.name} />
         )}
-        {deploy.error && <InlineError error={deploy.error} className="mt-1 text-xs text-red-700" />}
       </Td>
     </tr>
   );

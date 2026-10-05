@@ -594,3 +594,34 @@ ms → 66 / 122 ms; `api site` 305 / 321 → 48 / 43 ms; `list` 935 / 2099
 → 61 / 107 ms; `api events` 48 / 70 → 33 / 30 ms. Rebuilding every row
 (after an upgrade, or a provisioner.conf change) costs what one old
 `api sites` did, once.
+
+## Debugging (2026-10-05)
+
+"The site 500s — why?" should never end at "look at the logs". Every
+failure names its cause and links to where it's explained.
+
+- **Steps.** ddeploy records each run's steps (`lib/steps.sh`): a marker
+  line per step in the run log (`==> [id] label`), start/end lines in
+  `run-steps/<run id>.jsonl`, and on failure `failed_step` and
+  `live=yes|no` on the final event. The run page lists the steps
+  (`api run show`'s `steps`), splits the log on the markers to show one
+  step's output (`?step=<label>`), and puts a failure summary on top:
+  the step, whether the old release still runs, the step's last lines,
+  a hint. Toasts name the step.
+- **Pointers.** Doctor rows carry `see` (a log and the text to find, a
+  run and its step, or a tab). The UI renders them as links — the log
+  opens pre-filtered (`/logs?name=…&find=…`), the run opens at its step.
+  The HTTP check quotes what the failing request logged.
+- **Diagnosis.** The Overview gathers the failed deploy, the failing
+  request, other failing checks and the top errors since the last
+  deploy, saying whether a recent deploy is the likely culprit.
+- **Grouped errors.** `api errors` groups the nginx/PHP error log by
+  message; the Health tab shows them since the last deploy or the last
+  24h.
+- **Same commit.** History notes a deploy of the commit already live
+  ("nothing new") or of one an earlier deploy shipped; the Deploy
+  confirmation asks `api deploy-check` and says "up to date" or "N new
+  commits".
+
+Not done: a 5xx count / "down since" (needs access-log parsing or the
+doctor snapshot history).

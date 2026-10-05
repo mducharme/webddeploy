@@ -45,7 +45,7 @@ export function Status() {
         </Button>
       </div>
       <Card title={<span className="flex items-center gap-2"><StatusDot status={d.server.worst} /> Server</span>}>
-        <Checks checks={d.server.checks} />
+        <Checks checks={d.server.checks} server={server} />
       </Card>
       <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
         <h2 className="font-semibold">Sites ({d.sites.length})</h2>
@@ -72,7 +72,7 @@ export function Status() {
               </span>
             }
           >
-            <Checks checks={showAll ? s.checks : s.checks.filter((x) => x.status === 'warn' || x.status === 'fail')} />
+            <Checks checks={showAll ? s.checks : s.checks.filter((x) => x.status === 'warn' || x.status === 'fail')} server={server} site={s.name} />
           </Card>
         );
       })}

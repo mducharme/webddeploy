@@ -1,0 +1,10 @@
+{
+    "api_version": 1,
+    "site": "testsite",
+    "branch": "main",
+    "live_sha": "c3e2aef0a1b2c3d4e5f60718293a4b5c6d7e8f90",
+    "remote_sha": "d4f3b2a1c0b9a8f7e6d5c4b3a2918070f6e5d4c3",
+    "up_to_date": false,
+    "ahead": null,
+    "reachable": true
+}

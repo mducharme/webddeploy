@@ -60,6 +60,17 @@ What it's for:
   schedules (during a migration, say), and run a task now with live
   output. What runs stays declared in the repository's
   `.ddeploy/config.yaml`.
+- **Find out why something broke.** A run's page lists its steps
+  (fetch, composer, build, hooks, go live…) with timings; click one to
+  see only its output. A failed run says which step failed, whether the
+  site still runs the previous release, and shows that step's last
+  lines with a hint. The site's Overview has a Diagnosis box: the failed
+  deploy, what a failing request logged, the other failing checks, and
+  the top errors since the last deploy — each with a link that opens the
+  run at its failed step or the log filtered to that error. The Health
+  tab groups the site's errors by message. History marks a deploy of
+  the commit already live ("nothing new") or of an older one, and
+  Deploy's confirmation says whether the branch has new commits.
 - **Manage backups.** Each site has a Backups tab: last backups and
   schedules, database dumps (download, restore, keep forever, delete),
   restoring a file folder from the backup, and versions that bring back
