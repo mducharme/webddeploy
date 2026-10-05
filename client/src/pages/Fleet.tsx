@@ -1,6 +1,6 @@
 import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { countStatuses, type CheckStatus, type SiteNamesResponse, type SiteSummary } from '@webddeploy/shared';
-import { ExternalLink, Loader2, RefreshCw, Rocket, Search } from 'lucide-react';
+import { ExternalLink, LayoutGrid, Loader2, RefreshCw, Rocket, Rows3, Search } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import { Commit, Trigger } from '../components/RunTable.tsx';
 import { Badge, Card, ConfirmButton, Empty, ErrorBox, PhaseBadge, Spinner, StatusDot, Td, Th, cx, inputClass, InlineError } from '../components/ui.tsx';
@@ -13,6 +13,29 @@ import { RefreshBar } from '../components/RefreshBar.tsx';
 
 /** The newest run, config changes aside (older ddeploy: the newest event). */
 const lastRun = (s: SiteSummary) => (s.last_run !== undefined ? s.last_run : s.last_event);
+
+export type FleetLayout = 'table' | 'cards';
+const LAYOUT_KEY = 'webddeploy.fleet.layout';
+
+/** Table or cards, remembered in this browser (storage can be unavailable: then just this visit). */
+export function useFleetLayout(): [FleetLayout, (l: FleetLayout) => void] {
+  const [layout, setLayout] = useState<FleetLayout>(() => {
+    try {
+      return localStorage.getItem(LAYOUT_KEY) === 'cards' ? 'cards' : 'table';
+    } catch {
+      return 'table';
+    }
+  });
+  const set = (l: FleetLayout) => {
+    setLayout(l);
+    try {
+      localStorage.setItem(LAYOUT_KEY, l);
+    } catch {
+      /* private mode: fine for this visit */
+    }
+  };
+  return [layout, set];
+}
 
 export const FLEET_VIEWS = {
   all: { label: 'All', match: () => true },
@@ -34,6 +57,7 @@ export function Fleet() {
   const refresh = useRefreshFleet(server);
   // Names come back at once; the full list (deploys, runs) a moment later.
   const names = useSiteNames(server);
+  const [layout, setLayout] = useFleetLayout();
   const [query, setQuery] = useSearchState<string>('q', '');
   const [showPreviews, setShowPreviews] = useSearchState<boolean>('previews', false);
   const [view, setView] = useSearchState<FleetView>('view', 'all');
@@ -106,6 +130,22 @@ export function Fleet() {
               <input type="checkbox" checked={showPreviews} onChange={(e) => setShowPreviews(e.target.checked)} />
               Show previews
             </label>
+            {/* Phones always get cards; the choice is for wider screens. */}
+            <div role="group" aria-label="Layout" className="hidden overflow-hidden rounded-md border border-stone-200 md:flex dark:border-stone-700">
+              {(['table', 'cards'] as const).map((l) => (
+                <button
+                  key={l}
+                  type="button"
+                  aria-pressed={layout === l}
+                  title={l === 'table' ? 'Table' : 'Cards'}
+                  onClick={() => setLayout(l)}
+                  className={cx('px-2 py-1.5', layout === l ? 'bg-stone-200 text-stone-900 dark:bg-stone-700 dark:text-white' : 'text-stone-500 hover:bg-stone-100 dark:hover:bg-stone-800')}
+                >
+                  {l === 'table' ? <Rows3 className="size-4" aria-hidden /> : <LayoutGrid className="size-4" aria-hidden />}
+                  <span className="sr-only">{l === 'table' ? 'Table' : 'Cards'}</span>
+                </button>
+              ))}
+            </div>
             <div className="relative">
               <Search className="absolute left-2 top-2 size-4 text-stone-400" aria-hidden />
               <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Filter" aria-label="Filter sites" className={`${inputClass} w-48 pl-8`} />
@@ -114,7 +154,7 @@ export function Fleet() {
         }
       >
         {sites.isPending && names.data ? (
-          <PendingSites server={server} names={names.data.sites} query={query} showPreviews={showPreviews} />
+          <PendingSites server={server} names={names.data.sites} query={query} showPreviews={showPreviews} layout={layout} />
         ) : sites.isPending ? (
           <Spinner size="lg" label="Loading sites…" />
         ) : sites.error ? (
@@ -123,13 +163,20 @@ export function Fleet() {
           <Empty>{query || view !== 'all' ? (view === 'attention' ? 'Nothing needs attention.' : 'No site matches.') : 'No sites provisioned yet.'}</Empty>
         ) : (
           <>
+          {layout === 'cards' && (
+            <ul className="hidden gap-3 p-3 md:grid md:grid-cols-2 xl:grid-cols-3" data-testid="site-grid">
+              {rows.map(({ site, previews, nested }) => (
+                <SiteCard key={site.name} server={server} site={site} previews={previews} nested={nested} health={healthOf(site)} boxed />
+              ))}
+            </ul>
+          )}
           {/* Phones: one card per site instead of a table to scroll sideways. */}
           <ul className="divide-y divide-stone-100 md:hidden dark:divide-stone-800" data-testid="site-cards">
             {rows.map(({ site, previews, nested }) => (
               <SiteCard key={site.name} server={server} site={site} previews={previews} nested={nested} health={healthOf(site)} />
             ))}
           </ul>
-          <div className="hidden overflow-x-auto md:block">
+          <div className={cx('hidden overflow-x-auto', layout === 'table' && 'md:block')}>
             <table className="w-full min-w-[48rem]">
               <thead className="border-b border-stone-200 dark:border-stone-800">
                 <tr>
@@ -157,7 +204,7 @@ export function Fleet() {
 }
 
 /** The site names, already clickable, while their details load — in the same table as the full list. */
-function PendingSites({ server, names, query, showPreviews }: { server: string; names: SiteNamesResponse['sites']; query: string; showPreviews: boolean }) {
+function PendingSites({ server, names, query, showPreviews, layout }: { server: string; names: SiteNamesResponse['sites']; query: string; showPreviews: boolean; layout: FleetLayout }) {
   const q = query.trim().toLowerCase();
   const projects = names.filter((n) => !n.preview);
   const previewsOf = (p: string) => names.filter((n) => n.preview?.project === p);
@@ -178,7 +225,20 @@ function PendingSites({ server, names, query, showPreviews }: { server: string; 
           </li>
         ))}
       </ul>
-      <div className="hidden overflow-x-auto md:block">
+      {layout === 'cards' && (
+        <ul className="hidden gap-3 p-3 md:grid md:grid-cols-2 xl:grid-cols-3">
+          {rows.map(({ n, previews }) => (
+            <li key={n.name} className="space-y-2 rounded-lg border border-stone-200 bg-white p-4 dark:border-stone-800 dark:bg-stone-900">
+              <div className="flex items-start gap-2">
+                <span className="mt-1.5"><StatusDot status="pending" label="checking…" /></span>
+                <SiteNameCell server={server} name={n.name} url={n.url} preview={n.preview ? `preview of ${n.preview.project}` : null} previews={previews} nested={false} />
+              </div>
+              <div className="space-y-1.5 pl-5">{bar('w-3/4')}<div>{bar('w-1/2')}</div></div>
+            </li>
+          ))}
+        </ul>
+      )}
+      <div className={cx('hidden overflow-x-auto', layout === 'table' && 'md:block')}>
         <table className="w-full min-w-[48rem]">
           <thead className="border-b border-stone-200 dark:border-stone-800">
             <tr>
@@ -240,7 +300,7 @@ export function healthLabel({ status, checkedAt }: Health): string {
   return `health: ${status} · checked ${relativeTime(checkedAt)}`;
 }
 
-function SiteCard({ server, site, previews, nested, health }: { server: string; site: SiteSummary; previews: number; nested: boolean; health: Health }) {
+function SiteCard({ server, site, previews, nested, health, boxed }: { server: string; site: SiteSummary; previews: number; nested: boolean; health: Health; boxed?: boolean }) {
   const status = health.status;
   const deploy = useDeploy(server);
   const navigate = useNavigate();
@@ -248,13 +308,20 @@ function SiteCard({ server, site, previews, nested, health }: { server: string; 
   const ev = lastRun(site);
   const deployedAt = site.deployed_at ?? site.last_deploy?.ts ?? null;
   return (
-    <li className={cx('space-y-1.5 px-4 py-3', nested && 'pl-8', (status === 'fail' || ev?.phase === 'failed') && 'bg-red-50/50 dark:bg-red-950/20')}>
+    <li
+      className={cx(
+        boxed ? 'flex flex-col space-y-2 rounded-lg border bg-white p-4 dark:bg-stone-900' : 'space-y-1.5 px-4 py-3',
+        boxed && (status === 'fail' || ev?.phase === 'failed' ? 'border-red-300 dark:border-red-900' : 'border-stone-200 dark:border-stone-800'),
+        !boxed && nested && 'pl-8',
+        (status === 'fail' || ev?.phase === 'failed') && 'bg-red-50/50 dark:bg-red-950/20',
+      )}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <div className="flex items-center gap-2">
             <StatusDot status={status} label={healthLabel(health)} />
             <Link to="/s/$server/sites/$name" params={{ server, name: site.name }} className="font-medium hover:underline">{site.name}</Link>
-            {site.preview && <Badge tone="neutral">preview</Badge>}
+            {site.preview && <Badge tone="neutral">{boxed ? `preview of ${site.preview.project}` : 'preview'}</Badge>}
             {previews > 0 && <span className="text-xs text-stone-500">{previews} preview{previews > 1 ? 's' : ''}</span>}
           </div>
           <a href={site.url} target="_blank" rel="noreferrer" className="mt-0.5 flex items-center gap-1 truncate text-xs text-stone-500">
