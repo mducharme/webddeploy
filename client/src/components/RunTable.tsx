@@ -16,7 +16,7 @@ export function Trigger({ trigger, author }: { trigger: string; author?: string 
   return (
     <span className="text-stone-600 dark:text-stone-400" title={title}>
       {who}
-      {via && <span className="ml-1 text-xs text-stone-400">({via})</span>}
+      {via && <> <span className="text-xs text-stone-400">({via})</span></>}
     </span>
   );
 }
@@ -24,7 +24,7 @@ export function Trigger({ trigger, author }: { trigger: string; author?: string 
 export function Commit({ sha, repo, subject }: { sha: string | null; repo?: string | null; subject?: string | null }) {
   const url = commitUrl(repo, sha);
   return (
-    <span className="inline-flex min-w-0 max-w-[min(22rem,100%)] items-baseline gap-2 align-baseline">
+    <span className="inline-flex min-w-0 max-w-[min(18rem,100%)] items-baseline gap-2 align-baseline">
       {url ? (
         <a href={url} target="_blank" rel="noreferrer" className="text-teal-700 hover:underline dark:text-teal-400">
           <Mono>{shortSha(sha)}</Mono>
@@ -96,14 +96,14 @@ export function RunTable({
                   </Link>
                 </Td>
               )}
-              <Td className="whitespace-nowrap">
-                {kindLabel(r.kind)}
-                {r.branch && <span className="ml-1 text-xs text-stone-500">{r.branch}</span>}
+              <Td>
+                <span className="whitespace-nowrap">{kindLabel(r.kind)}</span>
+                {r.branch && <span className="ml-1 inline-block text-xs text-stone-500">{r.branch}</span>}
               </Td>
               <Td>
                 <PhaseBadge phase={r.phase} />
-                {r.failed_step && <span className="ml-1 text-xs text-red-700 dark:text-red-400">at {r.failed_step}</span>}
-                {r.error && <p className="mt-1 max-w-md text-xs text-red-700 dark:text-red-400">{r.error}</p>}
+                {r.failed_step && <span className="mt-1 block max-w-[16rem] truncate text-xs text-red-700 dark:text-red-400" title={r.failed_step}>at {r.failed_step}</span>}
+                {r.error && <p className="mt-1 line-clamp-2 max-w-[16rem] text-xs text-red-700 dark:text-red-400" title={r.error}>{r.error}</p>}
               </Td>
               <Td>
                 {r.to_sha ? (
@@ -112,10 +112,10 @@ export function RunTable({
                     <RelationNote run={r} runs={runs} />
                   </>
                 ) : r.subject ? (
-                  <span className="block max-w-[26rem] truncate text-stone-600 dark:text-stone-400" title={r.subject}>{r.subject}</span>
+                  <span className="block max-w-[18rem] truncate text-stone-600 dark:text-stone-400" title={r.subject}>{r.subject}</span>
                 ) : null}
               </Td>
-              <Td className="whitespace-nowrap">{r.legacy ? <span className="text-xs text-stone-400">before history</span> : <Trigger trigger={r.trigger} author={r.author} />}</Td>
+              <Td>{r.legacy ? <span className="text-xs text-stone-400">before history</span> : <Trigger trigger={r.trigger} author={r.author} />}</Td>
               <Td className="whitespace-nowrap text-right tabular-nums">{duration(r.duration_s)}</Td>
               {actions && <Td className="whitespace-nowrap text-right">{actions(r)}</Td>}
             </tr>

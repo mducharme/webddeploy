@@ -57,14 +57,14 @@ function Shell({ children }: { children: ReactNode }) {
           </nav>
           <span className="ml-auto lg:ml-0"><RunningIndicator server={server} /></span>
           <Can role="admin">
-            <Link to="/s/$server/provision" params={{ server }} className="hidden lg:block">
-              <Button variant="primary"><Plus className="size-4" /> New site</Button>
+            <Link to="/s/$server/provision" params={{ server }} className="hidden shrink-0 lg:block">
+              <Button variant="primary" className="whitespace-nowrap"><Plus className="size-4" /> New site</Button>
             </Link>
           </Can>
           <div className="hidden items-center gap-2 text-sm lg:flex">
             {me.picture && <img src={me.picture} alt="" className="size-7 rounded-full" referrerPolicy="no-referrer" />}
             <span className="hidden text-stone-600 2xl:inline dark:text-stone-300">{me.email}</span>
-            <span title={me.email} className="rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-600 dark:bg-stone-800 dark:text-stone-300">{ROLE_LABELS[me.role]}</span>
+            <span title={me.email} className="whitespace-nowrap rounded bg-stone-100 px-1.5 py-0.5 text-xs text-stone-600 dark:bg-stone-800 dark:text-stone-300">{ROLE_LABELS[me.role]}</span>
             <Button variant="ghost" onClick={() => void signOut()} aria-label="Sign out" title="Sign out">
               <LogOut className="size-4" />
             </Button>
