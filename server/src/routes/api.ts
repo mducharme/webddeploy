@@ -510,6 +510,43 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
   // Secret-looking values never leave the server unless asked for one at
   // a time (audited); the rest are shown as they are.
 
+  // --- queue workers and scheduled tasks ------------------------------------
+
+  srv.get('/sites/:name/workers', async (c) => c.json(await c.get('server').client.workers(siteParam(c))));
+
+  srv.post('/sites/:name/workers/:index/:action', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const parsed = z
+      .object({ index: z.coerce.number().int().min(0).max(99), action: z.enum(['restart', 'stop', 'start']) })
+      .safeParse({ index: c.req.param('index'), action: c.req.param('action') });
+    if (!parsed.success) return issues(c, parsed.error);
+    const { index, action } = parsed.data;
+    return audited(c.get('user').email, s.ref.id, `worker.${action}`, name, { index }, async () => ({
+      body: await s.client.workerAction(name, c.get('user').email, action, index),
+    }), c);
+  });
+
+  srv.post('/sites/:name/schedules/:action{pause|resume}', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const pause = c.req.param('action') === 'pause';
+    return audited(c.get('user').email, s.ref.id, pause ? 'schedules.pause' : 'schedules.resume', name, undefined, async () => ({
+      body: await s.client.pauseSchedules(name, c.get('user').email, pause),
+    }), c);
+  });
+
+  srv.post('/sites/:name/schedules/:index/run', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const index = z.coerce.number().int().min(0).max(99).safeParse(c.req.param('index'));
+    if (!index.success) return issues(c, index.error);
+    return audited(c.get('user').email, s.ref.id, 'schedule.run', name, { index: index.data }, async () => {
+      const { run_id } = await s.client.startScheduleRun(name, c.get('user').email, index.data);
+      return { body: { run_id }, runId: run_id, status: 202 };
+    }, c);
+  });
+
   // --- config files (charcoal's config.local.json, persistent_files) -------
 
   const filePath = z.string().regex(patterns.configFile, 'a config file path');

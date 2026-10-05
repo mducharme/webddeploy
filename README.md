@@ -53,6 +53,13 @@ What it's for:
   is recorded, since it can hold the database password. A save is refused
   if someone else changed the file meanwhile, and previous versions can
   be restored.
+- **Queue workers and scheduled tasks.** Each site's Workers & schedules
+  tab shows its workers (running, restarts, since when) and scheduled
+  tasks (how often, last run, result, duration), each with its log.
+  Admins can restart, stop or start a worker, pause or resume a site's
+  schedules (during a migration, say), and run a task now with live
+  output. What runs stays declared in the repository's
+  `.ddeploy/config.yaml`.
 - **Manage backups.** Each site has a Backups tab: last backups and
   schedules, database dumps (download, restore, keep forever, delete),
   restoring a file folder from the backup, and versions that bring back

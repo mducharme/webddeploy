@@ -5,6 +5,7 @@ import type {
   DbInfoResponse,
   UploadsResponse,
   BackupsResponse,
+  WorkersResponse,
   SiteNamesResponse,
   ConfigFileResponse,
   ConfigFilesResponse,
@@ -233,6 +234,41 @@ export interface MaskedEnv {
   path: string;
   entries: MaskedEnvEntry[];
   unparsed_lines: number;
+}
+
+export const useWorkers = (server: string, name: string) =>
+  useQuery({
+    queryKey: ['workers', server, name],
+    queryFn: () => api<WorkersResponse>(`${base(server)}/sites/${name}/workers`),
+    // A worker can crash between deploys: keep it reasonably current while the tab is open.
+    refetchInterval: 15_000,
+  });
+
+export function useWorkerAction(server: string, name: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { success: (_: unknown, v: unknown) => { const { action, index } = v as { action: string; index: number }; return `Worker #${index} ${action === 'stop' ? 'stopped' : action === 'start' ? 'started' : 'restarted'}`; } },
+    mutationFn: ({ index, action }: { index: number; action: 'restart' | 'stop' | 'start' }) =>
+      api<WorkersResponse>(`${base(server)}/sites/${name}/workers/${index}/${action}`, { method: 'POST' }),
+    onSuccess: (r) => qc.setQueryData(['workers', server, name], r),
+  });
+}
+
+export function usePauseSchedules(server: string, name: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { success: (_: unknown, pause: unknown) => (pause ? 'Schedules paused — nothing runs until you resume' : 'Schedules resumed') },
+    mutationFn: (pause: boolean) => api<WorkersResponse>(`${base(server)}/sites/${name}/schedules/${pause ? 'pause' : 'resume'}`, { method: 'POST' }),
+    onSuccess: (r) => qc.setQueryData(['workers', server, name], r),
+  });
+}
+
+export function useRunSchedule(server: string, name: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (index: number) => api<{ run_id: string }>(`${base(server)}/sites/${name}/schedules/${index}/run`, { method: 'POST' }),
+    onSuccess: () => void qc.invalidateQueries({ queryKey: keys.siteRuns(server, name) }),
+  });
 }
 
 export const useConfigFiles = (server: string, name: string) =>

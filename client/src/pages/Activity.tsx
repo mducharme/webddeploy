@@ -46,6 +46,12 @@ const ACTION_LABELS: Record<string, string> = {
   'file.read': 'opened a config file of',
   'file.edit': 'edited a config file of',
   'file.restore': 'restored a config file of',
+  'worker.restart': 'restarted a queue worker of',
+  'worker.stop': 'stopped a queue worker of',
+  'worker.start': 'started a queue worker of',
+  'schedules.pause': 'paused the scheduled tasks of',
+  'schedules.resume': 'resumed the scheduled tasks of',
+  'schedule.run': 'ran a scheduled task of',
 };
 
 /** A short summary of an audit entry's detail (never values: the server only records key names). */
@@ -68,6 +74,7 @@ function describe(action: string, detail: unknown): string {
   if (typeof d.sha === 'string') parts.push(d.sha.slice(0, 7));
   if (typeof d.role === 'string') parts.push(d.role);
   if (typeof d.path === 'string') parts.push(d.path);
+  if (typeof d.index === 'number') parts.push(`#${d.index}`);
   if (typeof d.host === 'string') parts.push(`${d.host}${typeof d.port === 'number' && d.port !== 22 ? `:${d.port}` : ''}`);
   if (typeof d.fingerprint === 'string') parts.push(d.fingerprint);
   if (action === 'config.set') parts.push(Object.entries(d).map(([k, v]) => `${k}=${String(v)}`).join(', '));

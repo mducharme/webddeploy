@@ -15,6 +15,7 @@ import { SettingsTab } from './SettingsTab.tsx';
 import { DeployNowButton } from './siteShared.tsx';
 import { useCan } from '../lib/role.tsx';
 import { RefreshBar } from '../components/RefreshBar.tsx';
+import { WorkersTab } from './WorkersTab.tsx';
 import { SiteSwitcher } from '../components/SiteSwitcher.tsx';
 import { useSearchState } from '../lib/searchState.ts';
 import { PreviewActions, PreviewsTab } from './PreviewsTab.tsx';
@@ -23,7 +24,8 @@ import { logStreamUrl, useDoctor, useLogs, useRefreshSite, useSite } from '../li
 import { relativeTime } from '../lib/format.ts';
 import { useOutputStream } from '../lib/stream.ts';
 
-export const SITE_TABS = ['overview', 'history', 'environment', 'settings', 'database', 'files', 'backups', 'previews', 'logs', 'health', 'config'] as const;
+export const SITE_TABS = ['overview', 'history', 'environment', 'settings', 'database', 'files', 'backups', 'previews', 'workers', 'logs', 'health', 'config'] as const;
+const TAB_LABELS: Partial<Record<(typeof SITE_TABS)[number], string>> = { workers: 'Workers & schedules' };
 export type SiteTab = (typeof SITE_TABS)[number];
 
 export function SitePage() {
@@ -51,7 +53,7 @@ export function SitePage() {
   const s = d.site;
   // Viewers: no environment (secrets) or database (data) tabs.
   const ADMIN_TABS: readonly SiteTab[] = ['environment', 'database'];
-  const tabs = SITE_TABS.filter((t) => !(t === 'previews' && s.preview) && (isAdmin || !ADMIN_TABS.includes(t))).map((id) => ({ id, label: id[0]!.toUpperCase() + id.slice(1) }));
+  const tabs = SITE_TABS.filter((t) => !((t === 'previews' || t === 'workers') && s.preview) && (isAdmin || !ADMIN_TABS.includes(t))).map((id) => ({ id, label: TAB_LABELS[id] ?? id[0]!.toUpperCase() + id.slice(1) }));
   const current: SiteTab = tabs.some((t) => t.id === tab) ? tab : 'overview';
 
   return (
@@ -93,6 +95,7 @@ export function SitePage() {
       {current === 'files' && <FilesTab server={server} name={name} />}
       {current === 'backups' && <BackupsTab server={server} name={name} />}
       {current === 'previews' && <PreviewsTab server={server} project={name} repo={s.repo} />}
+      {current === 'workers' && <WorkersTab server={server} name={name} />}
       {current === 'logs' && <SiteLog server={server} name={name} />}
       {current === 'health' && <HealthTab server={server} name={name} />}
       {current === 'config' && <ConfigTab detail={d} />}

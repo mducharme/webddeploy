@@ -325,6 +325,43 @@ export type ConfigFileResponse = z.infer<typeof configFileResponse>;
 
 export const configFileWriteResponse = z.object({ api_version: z.number(), path: z.string(), changed: z.boolean(), sha256: z.string() });
 
+/** `api workers <name>`: queue workers and scheduled tasks — declared, running, last run. */
+export const workersResponse = z.object({
+  api_version: z.number(),
+  site: z.string(),
+  preview: z.boolean(),
+  schedules_paused: z.boolean(),
+  workers: z.array(
+    z.object({
+      index: z.number(),
+      command: z.string(),
+      unit: z.string(),
+      /** systemd ActiveState (active, activating, inactive, failed…), or "missing" (declared, not installed). */
+      state: z.string(),
+      sub_state: z.string(),
+      restarts: z.number().nullable(),
+      since: z.string().nullable(),
+      pid: z.number().nullable(),
+      log: z.string().nullable(),
+    }),
+  ),
+  schedules: z.array(
+    z.object({
+      index: z.number(),
+      cron: z.string(),
+      command: z.string(),
+      /** current: through schedule-run (history, own log); legacy: installed before that, until the next deploy. */
+      installed: z.enum(['current', 'legacy', 'missing']),
+      running: z.boolean(),
+      last: z
+        .object({ started_at: z.string(), finished_at: z.string().nullable(), exit_code: z.number().nullable(), duration_s: z.number().nullable(), trigger: z.string().optional() })
+        .nullable(),
+      log: z.string().nullable(),
+    }),
+  ),
+});
+export type WorkersResponse = z.infer<typeof workersResponse>;
+
 export const envEntry = z.object({ key: z.string(), value: z.string(), managed: z.boolean() });
 export type EnvEntry = z.infer<typeof envEntry>;
 
@@ -486,8 +523,8 @@ export const patterns = {
   uploadDir: /^[A-Za-z0-9._/-]+$/,
   node: /^(v?[0-9]+(\.[0-9]+){0,2}|lts\/(\*|[a-z]+)|lts|node)$/,
   runId: /^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{6}$/,
-  /** ddeploy log names: <site>, <site>.access|error, nginx_access|error, phpX.Y_fpm (lib/cmd_api.sh API_LOG_NAME_RE). */
-  logName: /^([a-z0-9][a-z0-9-]{0,27}(\.(access|error))?|nginx_(access|error)|php[0-9]\.[0-9]{1,2}_fpm)$/,
+  /** ddeploy log names: <site>, <site>.access|error|worker-N|schedule-N, nginx_access|error, phpX.Y_fpm (lib/cmd_api.sh API_LOG_NAME_RE). */
+  logName: /^([a-z0-9][a-z0-9-]{0,27}(\.(access|error|worker-[0-9]{1,2}|schedule-[0-9]{1,2}))?|nginx_(access|error)|php[0-9]\.[0-9]{1,2}_fpm)$/,
   snapshotId: /^[0-9]{8}T[0-9]{6}Z-[a-z][a-z-]{0,19}$/,
   uploadsSnapshotId: /^[0-9]{8}T[0-9]{6}Z-[a-z0-9-]{1,40}$/,
   backupDump: /^[A-Za-z0-9][A-Za-z0-9_.-]{0,200}\.sql(\.gz)?$/,

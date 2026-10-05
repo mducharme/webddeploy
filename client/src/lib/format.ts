@@ -74,6 +74,12 @@ export const KIND_LABELS: Record<string, string> = {
   'env-change': 'Environment changed',
   'settings-change': 'Settings changed',
   'file-change': 'Config file changed',
+  'worker-restart': 'Worker restarted',
+  'worker-stop': 'Worker stopped',
+  'worker-start': 'Worker started',
+  'schedules-paused': 'Schedules paused',
+  'schedules-resumed': 'Schedules resumed',
+  'schedule-run': 'Scheduled task run',
   'db-import': 'Database imported',
   'db-restore': 'Database restored',
   'db-snapshot': 'Database snapshot',
@@ -93,6 +99,7 @@ export function cronLabel(expr: string): string {
   const f = expr.trim().split(/\s+/);
   if (f.length !== 5) return expr;
   const [m, h, dom, mon, dow] = f;
+  if (f.every((x) => x === '*')) return 'every minute';
   const num = (x: string | undefined) => /^\d+$/.test(x ?? '');
   if (num(m) && h === '*' && dom === '*' && mon === '*' && dow === '*') return `hourly at :${m!.padStart(2, '0')}`;
   if (num(m) && num(h) && dom === '*' && mon === '*' && dow === '*') return `daily at ${h!.padStart(2, '0')}:${m!.padStart(2, '0')} (server time)`;

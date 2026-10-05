@@ -1,0 +1,36 @@
+{
+    "api_version": 1,
+    "site": "testsite",
+    "preview": false,
+    "schedules_paused": false,
+    "workers": [
+        {
+            "index": 0,
+            "command": "sleep 1000",
+            "unit": "ddeploy-worker-testsite-0",
+            "state": "active",
+            "sub_state": "running",
+            "restarts": 0,
+            "since": "2026-10-05T01:04:26Z",
+            "pid": 184348,
+            "log": "testsite.worker-0"
+        }
+    ],
+    "schedules": [
+        {
+            "index": 0,
+            "cron": "* * * * *",
+            "command": "echo schedule-ran-$(date +%s) >> /tmp/schedule-marker.txt",
+            "installed": "current",
+            "running": false,
+            "last": {
+                "started_at": "2026-10-05T01:04:31Z",
+                "finished_at": "2026-10-05T01:04:31Z",
+                "exit_code": 0,
+                "duration_s": 0,
+                "trigger": "schedule"
+            },
+            "log": "testsite.schedule-0"
+        }
+    ]
+}

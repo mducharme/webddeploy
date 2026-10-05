@@ -23,6 +23,7 @@ import {
   siteDetailResponse,
   sitesResponse,
   uploadsResponse,
+  workersResponse,
   siteNamesResponse,
   configFilesResponse,
   configFileResponse,
@@ -168,6 +169,22 @@ export class DdeployClient {
 
   cancelRun(id: string, actor: string) {
     return this.call(runCancelResponse, ['run', 'cancel', id, '--actor', actor]);
+  }
+
+  workers(site: string) {
+    return this.call(workersResponse, ['workers', site]);
+  }
+
+  workerAction(site: string, actor: string, action: 'restart' | 'stop' | 'start', index: number) {
+    return this.call(workersResponse, ['workers', site, `--${action}`, String(index), '--actor', actor], { timeoutMs: 60_000 });
+  }
+
+  pauseSchedules(site: string, actor: string, pause: boolean) {
+    return this.call(workersResponse, ['schedules', site, pause ? '--pause' : '--resume', '--actor', actor]);
+  }
+
+  startScheduleRun(site: string, actor: string, index: number) {
+    return this.call(runStartResponse, ['run', 'start', 'schedule-run', site, '--index', String(index), '--actor', actor]);
   }
 
   configFiles(site: string) {
