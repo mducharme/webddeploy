@@ -3,6 +3,28 @@
     "site": "testsite",
     "preview": false,
     "schedules_paused": false,
+    "framework": null,
+    "docroot": "web",
+    "deployed": true,
+    "sources": {
+        "workers": "repo",
+        "schedules": "repo"
+    },
+    "server": {
+        "queue_workers": [],
+        "schedule": []
+    },
+    "repo": {
+        "queue_workers": [
+            "sleep 1000"
+        ],
+        "schedule": [
+            {
+                "cron": "* * * * *",
+                "cmd": "echo schedule-ran-$(date +%s) >> /tmp/schedule-marker.txt"
+            }
+        ]
+    },
     "workers": [
         {
             "index": 0,
@@ -11,8 +33,8 @@
             "state": "active",
             "sub_state": "running",
             "restarts": 0,
-            "since": "2026-10-05T01:04:26Z",
-            "pid": 184348,
+            "since": "2026-10-05T13:01:13Z",
+            "pid": 230265,
             "log": "testsite.worker-0"
         }
     ],
@@ -24,8 +46,8 @@
             "installed": "current",
             "running": false,
             "last": {
-                "started_at": "2026-10-05T01:04:31Z",
-                "finished_at": "2026-10-05T01:04:31Z",
+                "started_at": "2026-10-05T13:03:01Z",
+                "finished_at": "2026-10-05T13:03:01Z",
                 "exit_code": 0,
                 "duration_s": 0,
                 "trigger": "schedule"

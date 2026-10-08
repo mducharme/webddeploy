@@ -23,6 +23,7 @@ import {
   siteHistory,
   type Me,
   type Run,
+  workersConfigRequest,
 } from '@webddeploy/shared';
 import { Readable, Transform } from 'node:stream';
 import { Hono, type Context } from 'hono';
@@ -528,6 +529,21 @@ export function apiRoutes(deps: AppDeps): Hono<AppEnv> {
   // --- queue workers and scheduled tasks ------------------------------------
 
   srv.get('/sites/:name/workers', async (c) => c.json(await c.get('server').client.workers(siteParam(c))));
+
+  // Set the site's workers and scheduled tasks on the server (they win
+  // over the repository's; empty lists fall back to it), installed now.
+  srv.put('/sites/:name/workers', async (c) => {
+    const s = c.get('server');
+    const name = siteParam(c);
+    const parsed = workersConfigRequest.safeParse(await c.req.json().catch(() => null));
+    if (!parsed.success) return issues(c, parsed.error);
+    const cfg = parsed.data;
+    return audited(c.get('user').email, s.ref.id, 'workers.config', name, { workers: cfg.queue_workers.length, schedules: cfg.schedule.length }, async () => {
+      const body = await s.client.setWorkers(name, c.get('user').email, cfg);
+      invalidateSite(s, name);
+      return { body };
+    }, c);
+  });
 
   srv.post('/sites/:name/workers/:index/:action', async (c) => {
     const s = c.get('server');

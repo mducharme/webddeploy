@@ -1,12 +1,13 @@
 import { Link, useNavigate } from '@tanstack/react-router';
-import type { WorkersResponse } from '@webddeploy/shared';
-import { Clock, Pause, Play, RotateCw, ScrollText, Square } from 'lucide-react';
+import { presetsFor, type WorkersConfigRequest, type WorkersResponse } from '@webddeploy/shared';
+import { Clock, Pause, Pencil, Play, Plus, RotateCw, ScrollText, Sparkles, Square } from 'lucide-react';
 import { useState } from 'react';
 import { Badge, Button, Card, ConfirmButton, Empty, ErrorBox, InlineError, Mono, Spinner, StatusDot } from '../components/ui.tsx';
 import { usePauseSchedules, useRunSchedule, useWorkerAction, useWorkers } from '../lib/api.ts';
 import { cronLabel, duration, relativeTime } from '../lib/format.ts';
 import { useCan } from '../lib/role.tsx';
 import { LogStream } from './Site.tsx';
+import { WorkersEditor } from './WorkersEditor.tsx';
 
 type Worker = WorkersResponse['workers'][number];
 type Schedule = WorkersResponse['schedules'][number];
@@ -33,27 +34,97 @@ export function lastRunText(s: Schedule): { tone: 'ok' | 'fail' | 'running' | 'n
 export function WorkersTab({ server, name }: { server: string; name: string }) {
   const data = useWorkers(server, name);
   const [log, setLog] = useState<string | null>(null);
+  // null: not editing; otherwise the editor's starting lists (a suggestion, or what runs now).
+  const [editing, setEditing] = useState<WorkersConfigRequest | 'current' | null>(null);
+  const isAdmin = useCan('admin');
   if (data.isPending) return <Spinner size="lg" label="Reading workers and schedules…" />;
   if (data.error) return <ErrorBox error={data.error} title="Couldn't read the workers and schedules" />;
   const d = data.data;
   if (d.preview) return <Card className="p-4 text-sm text-stone-600 dark:text-stone-400">Previews don't run queue workers or scheduled tasks: a shared preview would process its parent's queue twice.</Card>;
   const none = d.workers.length === 0 && d.schedules.length === 0;
+  // ddeploy that can store the lists server-side (older: the repo only).
+  const editable = isAdmin && !!d.sources;
   return (
     <div className="space-y-4">
-      {none ? (
-        <Card className="p-4 text-sm text-stone-600 dark:text-stone-400">
-          <p>This site runs no queue workers or scheduled tasks.</p>
-          <HowTo />
-        </Card>
+      {editing ? (
+        <WorkersEditor server={server} name={name} d={d} initial={editing === 'current' ? undefined : editing} onClose={() => setEditing(null)} />
+      ) : none ? (
+        editable ? <SetUp d={d} onStart={setEditing} /> : (
+          <Card className="p-4 text-sm text-stone-600 dark:text-stone-400">
+            <p>This site runs no queue workers or scheduled tasks.</p>
+            <HowTo />
+          </Card>
+        )
       ) : (
         <>
+          {editable && (
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <SourceLine d={d} />
+              <Button onClick={() => setEditing('current')}><Pencil className="size-4" aria-hidden /> Edit workers & schedules</Button>
+            </div>
+          )}
           <WorkersCard server={server} name={name} d={d} onLog={setLog} />
           <SchedulesCard server={server} name={name} d={d} onLog={setLog} />
-          <HowTo />
+          {!editable && <HowTo />}
         </>
       )}
       {log && <LogStream key={log} server={server} name={log} title={<>Log: <Mono>{log}</Mono></>} />}
     </div>
+  );
+}
+
+/** Where the lists the site runs come from, in one line. */
+function SourceLine({ d }: { d: WorkersResponse }) {
+  const s = d.sources!;
+  const text =
+    s.workers === 'server' || s.schedules === 'server'
+      ? 'Set on this server, from this page.'
+      : "Declared in the repository's .ddeploy/config.yaml.";
+  return <p className="text-xs text-stone-500">{text}</p>;
+}
+
+/** Nothing set up yet: what these are, suggestions for the site's framework, and a way to start from scratch. */
+function SetUp({ d, onStart }: { d: WorkersResponse; onStart: (c: WorkersConfigRequest) => void }) {
+  const p = presetsFor(d.framework, d.docroot);
+  const suggested: WorkersConfigRequest = { queue_workers: p.workers.slice(0, 1).map((w) => w.cmd), schedule: p.schedules.slice(0, 1).map(({ cron, cmd }) => ({ cron, cmd })) };
+  const hasSuggestion = suggested.queue_workers.length + suggested.schedule.length > 0;
+  return (
+    <Card title="Background jobs" >
+      <div className="space-y-4 p-4 text-sm" data-testid="workers-setup">
+        <p className="text-stone-600 dark:text-stone-400">This site runs nothing in the background yet. Two kinds of jobs can be set up here — no deploy needed:</p>
+        <ul className="grid gap-3 sm:grid-cols-2">
+          <li className="rounded-md border border-stone-200 p-3 dark:border-stone-800">
+            <p className="font-medium">Queue workers</p>
+            <p className="text-xs text-stone-500">Always running, processing jobs the site puts in its queue (emails, image processing, imports). Restarted if they crash, and on every deploy.</p>
+          </li>
+          <li className="rounded-md border border-stone-200 p-3 dark:border-stone-800">
+            <p className="font-medium">Scheduled tasks</p>
+            <p className="text-xs text-stone-500">A command on a timer: every minute, nightly at 3:00… (cron). Each run's output and result is kept.</p>
+          </li>
+        </ul>
+        {hasSuggestion && (
+          <div className="rounded-md border border-teal-200 bg-teal-50/60 p-3 dark:border-teal-900 dark:bg-teal-950/30">
+            <p className="flex items-center gap-1.5 font-medium"><Sparkles className="size-4 text-teal-600" aria-hidden /> Suggested for {p.name}</p>
+            <ul className="mt-2 space-y-1.5 text-xs">
+              {[...p.workers.slice(0, 1).map((w) => ({ ...w, kind: 'Worker' })), ...p.schedules.slice(0, 1).map((s) => ({ ...s, kind: cronLabel(s.cron).replace(/^./, (c) => c.toUpperCase()) }))].map((x) => (
+                <li key={x.cmd}>
+                  <span className="text-stone-500">{x.kind}:</span> <Mono>{x.cmd}</Mono>
+                  <span className="block text-stone-500">{x.help}</span>
+                </li>
+              ))}
+            </ul>
+            <Button variant="primary" className="mt-3" onClick={() => onStart(suggested)}>Review and set up</Button>
+          </div>
+        )}
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => onStart({ queue_workers: [''], schedule: [] })}><Plus className="size-4" aria-hidden /> Add a queue worker</Button>
+          <Button onClick={() => onStart({ queue_workers: [], schedule: [{ cron: '*/5 * * * *', cmd: '' }] })}><Plus className="size-4" aria-hidden /> Add a scheduled task</Button>
+        </div>
+        <p className="text-xs text-stone-500">
+          Prefer code review? They can also be declared in the repository's <Mono>.ddeploy/config.yaml</Mono> (<Mono>queue_workers</Mono>, <Mono>schedule</Mono>) — the editor shows the YAML to commit.
+        </p>
+      </div>
+    </Card>
   );
 }
 

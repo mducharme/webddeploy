@@ -75,6 +75,7 @@ export const KIND_LABELS: Record<string, string> = {
   'settings-change': 'Settings changed',
   'file-change': 'Config file changed',
   'worker-restart': 'Worker restarted',
+  'workers-config': 'Workers & schedules changed',
   'worker-stop': 'Worker stopped',
   'worker-start': 'Worker started',
   'schedules-paused': 'Schedules paused',
@@ -104,6 +105,9 @@ export function cronLabel(expr: string): string {
   if (num(m) && h === '*' && dom === '*' && mon === '*' && dow === '*') return `hourly at :${m!.padStart(2, '0')}`;
   if (num(m) && num(h) && dom === '*' && mon === '*' && dow === '*') return `daily at ${h!.padStart(2, '0')}:${m!.padStart(2, '0')} (server time)`;
   if (/^\*\/\d+$/.test(m!) && h === '*' && dom === '*' && mon === '*' && dow === '*') return `every ${m!.slice(2)} minutes`;
+  if (num(m) && /^\*\/\d+$/.test(h!) && dom === '*' && mon === '*' && dow === '*') return `every ${h!.slice(2)} hours, at :${m!.padStart(2, '0')}`;
+  const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'];
+  if (num(m) && num(h) && dom === '*' && mon === '*' && num(dow) && Number(dow) <= 7) return `every ${DAYS[Number(dow)]} at ${h!.padStart(2, '0')}:${m!.padStart(2, '0')} (server time)`;
   return expr;
 }
 

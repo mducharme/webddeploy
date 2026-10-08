@@ -40,6 +40,7 @@ export const CHANGE_KINDS: ReadonlySet<string> = new Set([
   'settings-change',
   'file-change',
   'worker-restart',
+  'workers-config',
   'worker-stop',
   'worker-start',
   'schedules-paused',

@@ -375,11 +375,25 @@ export type ConfigFileResponse = z.infer<typeof configFileResponse>;
 export const configFileWriteResponse = z.object({ api_version: z.number(), path: z.string(), changed: z.boolean(), sha256: z.string() });
 
 /** `api workers <name>`: queue workers and scheduled tasks — declared, running, last run. */
+const workerLists = z.object({ queue_workers: z.array(z.string()), schedule: z.array(z.object({ cron: z.string(), cmd: z.string() })) });
+
 export const workersResponse = z.object({
   api_version: z.number(),
   site: z.string(),
   preview: z.boolean(),
   schedules_paused: z.boolean(),
+  // ddeploy with server-side lists (`api workers --set`); absent before.
+  /** craftcms, laravel, wordpress, wordpress-bedrock, charcoal, symfony, or null. */
+  framework: z.string().nullable().optional(),
+  docroot: z.string().optional(),
+  /** Whether the site has a live release (saving installs right away), or the first deploy will. */
+  deployed: z.boolean().optional(),
+  /** Where each list the site runs comes from. */
+  sources: z.object({ workers: z.enum(['server', 'repo', 'none']), schedules: z.enum(['server', 'repo', 'none']) }).optional(),
+  /** Set on the server (wins over the repo). */
+  server: workerLists.optional(),
+  /** Declared in the repository's .ddeploy/config.yaml. */
+  repo: workerLists.optional(),
   workers: z.array(
     z.object({
       index: z.number(),

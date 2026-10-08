@@ -46,6 +46,7 @@ const ACTION_LABELS: Record<string, string> = {
   'file.read': 'opened a config file of',
   'file.edit': 'edited a config file of',
   'file.restore': 'restored a config file of',
+  'workers.config': 'set the queue workers and scheduled tasks of',
   'worker.restart': 'restarted a queue worker of',
   'worker.stop': 'stopped a queue worker of',
   'worker.start': 'started a queue worker of',

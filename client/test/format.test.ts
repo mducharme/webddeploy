@@ -63,7 +63,8 @@ describe('cronLabel', () => {
     ['17 * * * *', 'hourly at :17'],
     ['5 3 * * *', 'daily at 03:05 (server time)'],
     ['*/15 * * * *', 'every 15 minutes'],
-    ['0 4 * * 1', '0 4 * * 1'],
+    ['0 4 * * 1', 'every Monday at 04:00 (server time)'],
+    ['0 4 1 * *', '0 4 1 * *'],
     ['nonsense', 'nonsense'],
   ])('%s', (expr, expected) => expect(cronLabel(expr)).toBe(expected));
 });

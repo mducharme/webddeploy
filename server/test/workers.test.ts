@@ -18,6 +18,25 @@ describe('queue workers and scheduled tasks', () => {
     expect(audit.list()[0]).toMatchObject({ action: `worker.${action}`, detail: { index: 0 } });
   });
 
+  it('set the lists: JSON on stdin (never argv), audited with counts only', async () => {
+    const { req, connector, audit } = makeApp();
+    const body = { queue_workers: ['php artisan queue:work --tries=3'], schedule: [{ cron: '* * * * *', cmd: 'php artisan schedule:run' }] };
+    const res = await req(`${site}/workers`, { method: 'PUT', body: JSON.stringify(body), headers: { 'content-type': 'application/json' } });
+    expect(res.status).toBe(200);
+    expect(connector.calls).toContainEqual(['workers', 'testsite', '--set', '--actor', ADMIN]);
+    expect(JSON.parse(connector.stdins.at(-1)!)).toEqual(body);
+    expect(audit.list()[0]).toMatchObject({ action: 'workers.config', detail: { workers: 1, schedules: 1 } });
+  });
+
+  it('refuses a bad cron before calling ddeploy; viewers cannot set', async () => {
+    const { req, connector } = makeApp();
+    const bad = await req(`${site}/workers`, { method: 'PUT', body: JSON.stringify({ queue_workers: [], schedule: [{ cron: 'daily', cmd: 'x' }] }), headers: { 'content-type': 'application/json' } });
+    expect(bad.status).toBe(400);
+    expect(connector.calls.some((c) => c.includes('--set'))).toBe(false);
+    const viewer = makeApp({ as: VIEWER });
+    expect((await viewer.req(`${site}/workers`, { method: 'PUT', body: '{"queue_workers":[],"schedule":[]}', headers: { 'content-type': 'application/json' } })).status).toBe(403);
+  });
+
   it('pause and resume the schedules', async () => {
     const { req, connector } = makeApp();
     await req(`${site}/schedules/pause`, { method: 'POST' });

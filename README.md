@@ -58,8 +58,12 @@ What it's for:
   tasks (how often, last run, result, duration), each with its log.
   Admins can restart, stop or start a worker, pause or resume a site's
   schedules (during a migration, say), and run a task now with live
-  output. What runs stays declared in the repository's
-  `.ddeploy/config.yaml`.
+  output. They can also set them up from the tab — suggested commands
+  for the detected framework (Laravel, Craft, WordPress, Symfony),
+  cron shortcuts with a plain-words description — saved on the server
+  and running right away, no deploy needed. A list saved there wins over
+  the repository's `.ddeploy/config.yaml`; the editor also shows the
+  YAML to commit instead, for changes that should go through review.
 - **Find out why something broke.** A run's page lists its steps
   (fetch, composer, build, hooks, go live…) with timings; click one to
   see only its output. A failed run says which step failed, whether the

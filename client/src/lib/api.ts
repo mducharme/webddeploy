@@ -8,6 +8,7 @@ import type {
   DeployCheckResponse,
   ErrorsResponse,
   RunStep,
+  WorkersConfigRequest,
   WorkersResponse,
   SiteNamesResponse,
   ConfigFileResponse,
@@ -264,6 +265,20 @@ export const useWorkers = (server: string, name: string) =>
     // A worker can crash between deploys: keep it reasonably current while the tab is open.
     refetchInterval: 15_000,
   });
+
+/** Set the site's workers and scheduled tasks on the server (installed now when the site is live). */
+export function useSetWorkers(server: string, name: string) {
+  const qc = useQueryClient();
+  return useMutation({
+    meta: { success: (r: unknown) => ((r as WorkersResponse).deployed === false ? 'Saved — installed on the first deploy' : 'Saved and applied') },
+    mutationFn: (cfg: WorkersConfigRequest) =>
+      api<WorkersResponse>(`${base(server)}/sites/${name}/workers`, { method: 'PUT', body: JSON.stringify(cfg) }),
+    onSuccess: (r) => {
+      qc.setQueryData(['workers', server, name], r);
+      void qc.invalidateQueries({ queryKey: keys.siteRuns(server, name) });
+    },
+  });
+}
 
 export function useWorkerAction(server: string, name: string) {
   const qc = useQueryClient();

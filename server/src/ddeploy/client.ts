@@ -39,6 +39,7 @@ import {
   serverConfigResponse,
   type PreviewCreateRequest,
   type ProvisionRequestParsed,
+  type WorkersConfigRequest,
 } from '@webddeploy/shared';
 import type { Readable } from 'node:stream';
 import { z } from 'zod';
@@ -183,6 +184,11 @@ export class DdeployClient {
 
   workers(site: string) {
     return this.call(workersResponse, ['workers', site]);
+  }
+
+  /** The lists go on stdin as JSON; ddeploy validates, stores them server-side and installs them now. */
+  setWorkers(site: string, actor: string, config: WorkersConfigRequest) {
+    return this.call(workersResponse, ['workers', site, '--set', '--actor', actor], { stdin: JSON.stringify(config), timeoutMs: 120_000 });
   }
 
   workerAction(site: string, actor: string, action: 'restart' | 'stop' | 'start', index: number) {
