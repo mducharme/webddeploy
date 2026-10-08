@@ -19,6 +19,7 @@ export interface SettingDef {
 
 export const SETTINGS: readonly SettingDef[] = [
   { key: 'basic_auth', label: 'Basic auth', kind: 'bool', group: 'Access', help: 'Password-protect the site with the server-wide basic-auth credentials.' },
+  { key: 'auth_allow_ips', label: 'Addresses without basic auth', kind: 'list', group: 'Access', pattern: /^(none|[0-9A-Fa-f:.]+(\/[0-9]{1,3})?)$/, placeholder: '203.0.113.10 198.51.100.0/24', help: "Visitors from these IPs or ranges skip the password; everyone else still gets one. Adds to the server-wide list; 'none' drops that list for this site. One address can be a whole office or VPN." },
   { key: 'auth_exempt_paths', label: 'Paths without basic auth', kind: 'list', group: 'Access', pattern: /^\/[A-Za-z0-9/_.~-]*$/, placeholder: '/webhook /api/health', help: 'URL path prefixes that skip basic auth (absolute paths).' },
   { key: 'additional_hostnames', label: 'Extra hostnames', kind: 'list', group: 'Hostnames', pattern: patterns.hostname, placeholder: 'alt-name', help: 'Each becomes <name>.<base domain>, on the wildcard certificate.' },
   { key: 'additional_fqdns', label: 'Custom domains', kind: 'list', group: 'Hostnames', pattern: patterns.hostname, placeholder: 'www.client.com', help: "The site's own domains. DNS must point at this server first: the certificate is issued over HTTP-01 on deploy." },

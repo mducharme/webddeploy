@@ -30,6 +30,7 @@ const cron = /^[0-9*/,-]+(\s+[0-9*/,-]+){4}$/;
 
 export const SERVER_SETTINGS: readonly ServerSettingDef[] = [
   { key: 'BASIC_AUTH_DEFAULT', label: 'Basic auth by default', group: 'New sites & deploys', kind: 'bool', help: "Sites without their own basic_auth setting are password-protected." },
+  { key: 'BASIC_AUTH_ALLOW_IPS', label: 'Addresses without basic auth', group: 'New sites & deploys', kind: 'text', pattern: /^\s*([0-9A-Fa-f:.]+(\/[0-9]{1,3})?\s*)*$/, placeholder: '203.0.113.10 198.51.100.0/24', help: 'Space-separated IPs or ranges that skip the password on every site that has one (an office, a VPN). A site can add its own, or drop these.' },
   { key: 'CLIENT_MAX_BODY_SIZE', label: 'Max upload size', group: 'New sites & deploys', kind: 'text', pattern: /^[0-9]+[kKmMgG]?$/, placeholder: '64m', help: "nginx's request body limit for sites that don't set their own." },
   { key: 'FPM_MAX_CHILDREN', label: 'PHP-FPM workers per site', group: 'New sites & deploys', kind: 'text', pattern: /^[1-9][0-9]{0,2}$/, placeholder: '5', help: 'Concurrent PHP requests per site, unless the site sets its own.' },
   { key: 'DEFAULT_PHP', label: 'Default PHP version', group: 'New sites & deploys', kind: 'text', pattern: /^[0-9]+\.[0-9]+$/, placeholder: '8.3', help: 'For new sites whose repository doesn\'t say.' },
@@ -46,6 +47,7 @@ export const SERVER_SETTINGS: readonly ServerSettingDef[] = [
   { key: 'BACKUP_ENABLED', label: 'Files backups', group: 'Backups', kind: 'bool', help: 'Scheduled sync of upload folders to object storage.' },
   { key: 'BACKUP_SCHEDULE', label: 'Files backup schedule', group: 'Backups', kind: 'text', pattern: cron, placeholder: '17 * * * *', help: 'Cron expression (server time).' },
   { key: 'UPLOADS_BACKUP_VERSIONS_DAYS', label: 'Changed/deleted files kept (days)', group: 'Backups', kind: 'text', pattern: int, placeholder: '30', help: 'How long a files backup keeps what it overwrote or deleted. 0: plain mirror.' },
+  { key: 'DOCTOR_SCHEDULE', label: 'Health check schedule', group: 'Notifications', kind: 'text', pattern: cron, placeholder: '*/10 * * * *', help: "When the health checks run in the background (cron). The fleet page shows the last result; the webhook is paged only when a check starts failing or recovers." },
   { key: 'NOTIFY_WEBHOOK', label: 'Slack / Discord webhook', group: 'Notifications', kind: 'secret', pattern: /^(https:\/\/[A-Za-z0-9.-]+(:[0-9]+)?(\/[A-Za-z0-9._~/?=&%+:@-]*)?)?$/, placeholder: 'https://hooks.slack.com/services/…', help: 'Server-wide channel for deploys and failures. Empty: off.' },
   { key: 'NOTIFY_EVENTS', label: 'Events sent', group: 'Notifications', kind: 'text', pattern: /^[a-z -]*$/, placeholder: 'deploy-success deploy-failure', help: 'Any of: deploy-success deploy-failure preview-created preview-removed webhook-rejected.' },
   { key: 'NOTIFY_COOLDOWN', label: 'Repeat-alert cooldown (seconds)', group: 'Notifications', kind: 'text', pattern: int, placeholder: '3600', help: 'Minimum time between identical failure alerts.' },
